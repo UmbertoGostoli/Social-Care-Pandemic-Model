@@ -377,35 +377,52 @@ def init_params():
     p['incomeRelocationBeta'] = 0.0002
     p['baseRelocationRate'] = 0.1
     
-    ## Pandemic parameters   ######
+    #### Pandemic parameters   ######
+    
+    ### Sensitivity parameters ###
+    p['beta'] = 0.2
+    p['symptomsContagiousnessExp'] = 0.5
+    p['asymptomaticContagiousnessFactor'] = 0.5
+    p['maxNetworkFactor'] = 2.0
+    p['networkWeightBeta'] = 0.1
+    p['distanceInfectionFactor'] = 1.0
+    p['mildExponentialPar'] = 0.1
+    p['symptomSocialCareThreshold'] = 0.5
+    
+    p['symptomsMobilityExp'] = 0.5
+    p['mildSymptomThreshold'] = 0.7
+    
+    
+    
     p['ageClasses'] = 9
     p['ageBreaks'] = [10, 20, 30, 40, 50, 60, 70, 80]
-    p['infectionWeightsByAge'] = [1.0, 1.5, 4.0, 7.0, 8.0, 8.0, 6.0, 5.0, 5.0]
+    p['numberOfContacts'] = [10, 14, 20, 20, 20, 18, 10, 7, 7]
+    p['infectionWeightsByAge'] = [1.0, 1.0, 2.0, 4.0, 4.0, 5.0, 6.0, 7.0, 7.0]
+    
+    # p['infectionWeightsByAge'] = [1.0, 1.5, 4.0, 7.0, 8.0, 8.0, 6.0, 5.0, 5.0]
     p['severityWeightsByAge'] = [1.0, 1.0, 1.0, 1.0, 3.0, 9.0, 25.0, 50.0, 70.0]
     p['severityWeightsByGender'] = [1.0, 1.5]
     p['severityWeightsByClass'] = [1.2, 1.10, 1.0, 1.0, 1.0]
     p['incomeClasses'] = 5
     p['infectionWeightsByClass'] = [2.0, 1.5, 1.25, 1.0, 1.0]
-    p['beta'] = 0.2
+    
     p['meanIncubation'] = 1.6
     p['sdIncubation'] = 0.25
     p['minIncubation'] = 3
     p['meanRecovery'] = 2.4
     p['sdRecovery'] = 0.3
-    p['expositionToRecovery'] = 18
     p['exogenousInfectionRate'] = 0.001
     p['preSymptomsContagiousPeriod'] = 2
     p['symptomsLevels'] = ['asymptomatic', 'mild', 'severe', 'critical', 'dead']
     p['symptomsProbabilities'] = [0.3, 0.5, 0.15, 0.04, 0.01]
-    p['asymptomaticInfectiousnessFactor'] = 0.5
+    
     p['classWeightParam'] = 0.1
-    p['maxNetworkFactor'] = 2.0
-    p['networkWeightBeta'] = 0.1
-    p['mildExponentialPar'] = 0.1
     p['symptomChildcareThreshold'] = 0.5
+    
     # Policy variables
     
     p['lockdownEvent'] = 'death' # 'hospitalization' # 'intubation'
+    p['lockdownPeriod'] = 3
     p['daysFromEvent'] = 14
     p['endLockdownIndicator'] = 'newCases'
     p['benchmarkIndicator'] = 'overMax'
@@ -413,8 +430,11 @@ def init_params():
     
     p['lockdown'] = False
     p['lockdownDuration'] = 90
+    # Lockdown changes on social care
     p['betaReduction'] = 0.5
-    p['supplyReductionRate'] = 0.3
+    p['supplyReductionRate'] = 0.2
+    p['increasedSupplyFactor'] = 0.5
+    
     
     # p['supportNetworkBeta'] = 0.1
     # p['incomeRelocationBeta'] = 0.0002

@@ -55,7 +55,7 @@ class Sim:
                         'publicSocialCare', 'costPublicSocialCare', 'sharePublicSocialCare', 'costTaxFreeSocialCare', 
                         'publicChildCare', 'costPublicChildCare', 'sharePublicChildCare', 'costTaxFreeChildCare', 
                         'totalTaxRevenue', 'totalPensionRevenue', 'pensionExpenditure', 'totalHospitalizationCost', 
-                        'classShare_1', 'classShare_2', 'classShare_3', 'classShare_4', 'classShare_5', 'totalInformalChildCare', 
+                        'totalInformalChildCare', 
                         'formalChildCare', 'childcareIncomeShare', 'shareInformalChildCare', 'shareCareGivers', 
                         'ratioFemaleMaleCarers', 'shareMaleCarers', 'shareFemaleCarers', 'ratioWage', 'ratioIncome', 
                         'shareFamilyCarer', 'share_over20Hours_FamilyCarers', 'averageHoursOfCare', 'share_40to64_carers', 
@@ -143,6 +143,8 @@ class Sim:
         self.recovered = 0
         self.hospitalized = 0
         self.intubated = 0
+        self.asymptomatic = 0
+        self.mildSymptomatic = 0
         self.deathsForCovid = 0
         self.totalDeaths = 0
         self.policyStartDeaths = 0
@@ -185,11 +187,11 @@ class Sim:
         self.socialCareNetwork = nx.DiGraph()
 
         # if self.p['interactiveGraphics']:
-        self.window = Tkinter.Tk()
-        self.canvas = Tkinter.Canvas(self.window,
-                                width=self.p['screenWidth'],
-                                height=self.p['screenHeight'],
-                                background=self.p['bgColour'])
+#        self.window = Tkinter.Tk()
+#        self.canvas = Tkinter.Canvas(self.window,
+#                                width=self.p['screenWidth'],
+#                                height=self.p['screenHeight'],
+#                                background=self.p['bgColour'])
 
 
     def run(self, policy, policyParams, seed):
@@ -218,12 +220,8 @@ class Sim:
         with open(filePath, "wb") as f:
             csv.writer(f).writerow(c.keys())
             csv.writer(f).writerows(itertools.izip_longest(*c.values()))
-        
-        if policy == 0:
-            startDay = 0
-        else:
-            startDay = int(self.lockdownDay)
-        
+
+        startDay = 0
         
         startSim = time.time()
         
@@ -320,8 +318,11 @@ class Sim:
 #            pickle.dump(self.map, open('Canvas_Map/save.m_'+str(self.year), 'wb'))
 #            self.from_IDs_to_Agents()
           
-    
-        for self.pandemicDay in range(startDay, int(self.p['pandemicPeriod']+1)):
+        if policy != 0:
+            self.lockdownDay = pickle.load(open(self.folder + '/Policy_0/save.l', 'rb'))
+            startDay = self.lockdownDay
+            
+        for self.pandemicDay in range(int(startDay), int(self.p['pandemicPeriod']+1)):
             
             print 'Lockdown day: ' + str(self.lockdownDay)
             print 'Current day: ' + str(self.pandemicDay)
@@ -338,17 +339,22 @@ class Sim:
                 # From list of agents to list of indexes
                 if policy == 0:
                     
-                    self.lockdownMaxCases = self.maxNewCases
+                    
                     print 'Saving the simulation....'
                     
                     self.from_Agents_to_IDs()
-                    self.policyStartDeaths = self.totalDeaths
+                    # self.policyStartDeaths = self.totalDeaths
+                    # self.lockdownMaxCases = self.maxNewCases
                     # Save outputs
                     self.outputData = pd.read_csv(policyFolder + '/Outputs.csv')
                     self.outputData.to_csv(policyFolder + '/tempOutputs.csv', index=False)
                     # Save simulation
                     pickle.dump(self.pop, open(policyFolder + '/save.p', 'wb'))
                     pickle.dump(self.map, open(policyFolder + '/save.m', 'wb'))
+                    
+                    pickle.dump(self.maxNewCases, open(policyFolder + '/save.n', 'wb'))
+                    pickle.dump(self.totalDeaths, open(policyFolder + '/save.d', 'wb'))
+                    pickle.dump(self.lockdownDay, open(policyFolder + '/save.l', 'wb'))
                 
                 # Upload simulation
                 print 'Uploading the simulation....'
@@ -356,14 +362,18 @@ class Sim:
                 self.pop = pickle.load(open(self.folder + '/Policy_0/save.p', 'rb'))
                 self.map = pickle.load(open(self.folder + '/Policy_0/save.m', 'rb'))
                 
+                self.maxNewCases = pickle.load(open(self.folder + '/Policy_0/save.n', 'rb'))
+                self.totalDeaths = pickle.load(open(self.folder + '/Policy_0/save.d', 'rb'))
+                # self.lockdownDay = pickle.load(open(self.folder + '/Policy_0/save.l', 'rb'))
                 self.from_IDs_to_Agents()
                 
                 # Upload outputs
                 if policy != 0:
                     self.lockdown = self.p['lockdown']
-                    self.maxNewCases = self.lockdownMaxCases
                     
-                    self.totalDeaths = self.policyStartDeaths
+                    # self.maxNewCases = self.lockdownMaxCases
+                    # self.totalDeaths = self.policyStartDeaths
+                    
                     self.outputData = pd.read_csv(self.folder + '/Policy_0/tempOutputs.csv')
                     self.outputData.to_csv(policyFolder + '/Outputs.csv', index=False)
                     
@@ -386,9 +396,6 @@ class Sim:
         print ''
         print 'Simulation time: ' + str(simulationTime)
         
-        if self.p['singleRunGraphs']:
-            self.doGraphs()
-    
         if self.p['interactiveGraphics']:
             print "Entering main loop to hold graphics up there."
             self.window.mainloop()
@@ -558,7 +565,6 @@ class Sim:
         
         ################################
         
-   
         self.doStats(day, policyFolder, dataMapFolder, dataHouseholdFolder)
         
         
@@ -585,7 +591,7 @@ class Sim:
                 newExposed = np.random.choice(travellers, size=exogenouslyInfected, replace=False, p=probs)
                 for agent in newExposed:
                     agent.healthStatus = 'exposed'
-                    agent.daysFromInfection = 1
+                    agent.daysFromInfection = 0
                     agent.hasBeenExposed = True
                     agent.incubationPeriod = int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation'])))
                     agent.recoveryPeriod = int(math.ceil(np.random.lognormal(self.p['meanRecovery'], self.p['sdRecovery'])))
@@ -595,17 +601,47 @@ class Sim:
         
         #### Change 1: the probability to get the virus depends on age, SES and the number of contagious relatives #####
         susceptibles = [x for x in self.pop.livingPeople if x.healthStatus == 'susceptible']
+        peopleNotInHospital = [x for x in self.pop.livingPeople if x.hospitalized == False]
+        susceptiblePopRatio = float(len(susceptibles))/float(len(peopleNotInHospital))
         infectiousPeople = [x for x in self.pop.livingPeople if x.healthStatus == 'infectious' and x.hospitalized == False]
+        
         asymptomatic = [x for x in infectiousPeople if x.symptomsLevel == 'asymptomatic']
         notAsymptomatic = [x for x in infectiousPeople if x not in asymptomatic]
-        equivalentInfected = float(len(notAsymptomatic)) + float(len(asymptomatic))*self.p['asymptomaticInfectiousnessFactor']
+        
+#############   Alternative determination of I (with number of contacts)    #########################################################################
+        
+#        infectiousAtHome = [x for x in infectiousPeople if x.mildConditionIndex > self.p['mildSymptomThreshold']]
+#        infectiousNotAtHome = [x for x in infectiousPeople if x not in infectiousAtHome]
+#        equivalentInfected = 0
+#        for agent in infectiousNotAtHome:
+#            contacts = float(self.p['numberOfContacts'][agent.ageClass])/float(max(self.p['numberOfContacts']))
+#            mobility = math.pow(1.0-agent.mildConditionIndex, self.p['symptomsMobilityExp'])
+#            minContagiousness = self.p['asymptomaticContagiousnessFactor']
+#            contagiousness = minContagiousness + (1.0-minContagiousness)*math.pow(agent.mildConditionIndex, self.p['symptomsContagiousnessExp'])
+#            equivalentInfected += contacts*mobility*contagiousness
+#        
+#        for agent in infectiousAtHome:
+#            contacts = len([x for x in agent.house.occupants if x != agent and x.healthStatus == 'susceptible'])
+#            contactsRatio = float(contacts)/(float(max(self.p['numberOfContacts']))*susceptiblePopRatio)
+#            if contactsRatio > 1.0:
+#                contactsRatio = 1.0
+#            minContagiousness = self.p['asymptomaticContagiousnessFactor']
+#            contagiousness = minContagiousness + (1.0-minContagiousness)*math.pow(agent.mildConditionIndex, self.p['symptomsContagiousnessExp'])
+#            equivalentInfected += contactsRatio*contagiousness
+        
+######################################################################################################################################################
+            
+            
+        equivalentSymptomatic = sum([np.power(1.0-x.mildConditionIndex, self.p['symptomsContagiousnessExp']) for x in notAsymptomatic])
+        equivalentInfected = equivalentSymptomatic + float(len(asymptomatic))*self.p['asymptomaticContagiousnessFactor']
         
         print 'Equivalent infected: ' + str(equivalentInfected)
+        
         
         beta = self.p['beta']
         if self.lockdown == True:
             beta *= self.p['betaReduction']
-        probInfection = beta*equivalentInfected/float(len(self.pop.livingPeople))
+        probInfection = beta*equivalentInfected/float(len(peopleNotInHospital))
         
         endogenouslyInfected = int(round(float(len(susceptibles))*probInfection))
         self.newCases = endogenouslyInfected
@@ -628,14 +664,21 @@ class Sim:
             # - age;
             # - SES (income quintile);
             # - infectious in the kinship network;
+            
             ageFactors = [x.aiw for x in susceptibles]
+            contactsFactors = [float(self.p['numberOfContacts'][x.ageClass]) for x in susceptibles]
             classFactors = [x.ciw for x in susceptibles]
+            
+            # Alternative network infection weights (1 parameter)
+            networkInfectionFactors = [np.exp(self.p['networkWeightBeta']*x.networkInfectionFactor) for x in susceptibles]
+            networkFactors = [x/sum(networkInfectionFactors) for x in networkInfectionFactors]
+            
             networkFactors = []
             for agent in susceptibles:
                 agentFactor = np.exp(self.p['networkWeightBeta']*agent.networkInfectionFactor)
                 nf = (self.p['maxNetworkFactor']*agentFactor-(self.p['maxNetworkFactor']-1))/agentFactor
                 networkFactors.append(nf)
-            weights = [a*b*c for a, b, c in zip(ageFactors, classFactors, networkFactors)]
+            weights = [a*b*c*d for a, b, c, d in zip(ageFactors, classFactors, networkFactors, contactsFactors)]
             probs = [x/sum(weights) for x in weights]
             newExposed = np.random.choice(susceptibles, size=endogenouslyInfected, replace=False, p=probs)
             ageClasses = [x.ageClass for x in newExposed]
@@ -666,7 +709,7 @@ class Sim:
                 for agent in newDead:
                     agent.healthStatus = 'exposed'
                     agent.hasBeenExposed = True
-                    agent.daysFromInfection = 1
+                    agent.daysFromInfection = 0
                     agent.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                     agent.symptomsLevel = 'dead'
                     agent.severityLevel = 4
@@ -707,7 +750,7 @@ class Sim:
                 for agent in newCritical:
                     agent.healthStatus = 'exposed'
                     agent.hasBeenExposed = True
-                    agent.daysFromInfection = 1
+                    agent.daysFromInfection = 0
                     agent.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                     agent.symptomsLevel = 'critical'
                     agent.severityLevel = 3
@@ -745,7 +788,7 @@ class Sim:
                 for agent in newSerious:
                     agent.healthStatus = 'exposed'
                     agent.hasBeenExposed = True
-                    agent.daysFromInfection = 1
+                    agent.daysFromInfection = 0
                     agent.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                     agent.symptomsLevel = 'severe'
                     agent.severityLevel = 2
@@ -779,7 +822,7 @@ class Sim:
                 for agent in newMild:
                     agent.healthStatus = 'exposed'
                     agent.hasBeenExposed = True
-                    agent.daysFromInfection = 1
+                    agent.daysFromInfection = 0
                     agent.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                     agent.symptomsLevel = 'mild'
                     agent.severityLevel = 1
@@ -807,7 +850,7 @@ class Sim:
             for agent in residualExposed:
                 agent.healthStatus = 'exposed'
                 agent.hasBeenExposed = True
-                agent.daysFromInfection = 1
+                agent.daysFromInfection = 0
                 agent.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                 agent.symptomsLevel = 'asymptomatic'
                 agent.severityLevel = 0
@@ -949,47 +992,51 @@ class Sim:
                 for agent in otherMembers:
                     if agent.healthStatus == 'infectious' and agent.hospitalized == False:
                         person.networkInfectionFactor += 1.0/np.power(2, 0)
-            # First level
+            
             if self.lockdown == False:
+                # First level
+                distance = 1
                 if person.father != None:
                     nok = person.father
                     if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                        person.networkInfectionFactor += 1.0/np.power(2, 1)
+                        person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                     nok = person.mother
                     if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                        person.networkInfectionFactor += 1.0/np.power(2, 1)
+                        person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                 for child in person.children:
                     nok = child
                     if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                        person.networkInfectionFactor += 1.0/np.power(2, 1)
+                        person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                 # Second level
+                distance = 2
                 if person.father != None:
                     if person.father.father != None:
                         nok = person.father.father
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 2)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                         nok = person.father.mother
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 2)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                     if person.mother.father != None:
                         nok = person.mother.father
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 2)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                         nok = person.mother.mother
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 2)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                     brothers = list(set(person.father.children + person.mother.children))
                     brothers.remove(person)
                     for brother in brothers:
                         nok = brother
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 2)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                 for child in person.children:
                     for grandchild in child.children:
                         nok = grandchild
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 2)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                 # Third level
+                distance = 3
                 uncles = []
                 if person.father != None:
                     if person.father.father != None:
@@ -1001,14 +1048,14 @@ class Sim:
                     for uncle in uncles:
                         nok = uncle
                         if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                            person.networkInfectionFactor += 1.0/np.power(2, 3)
+                            person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
                     brothers = list(set(person.father.children + person.mother.children))
                     brothers.remove(person)
                     for brother in brothers:
                         for child in brother.children:
                             nok = child
                             if nok.dead == False and nok.house.town == person.house.town and nok.healthStatus == 'infectious' and nok.hospitalized == False and nok not in household:
-                                person.networkInfectionFactor += 1.0/np.power(2, 3)
+                                person.networkInfectionFactor += 1.0/np.power(2, distance*self.p['distanceInfectionFactor'])
         
         
     def doOneYear(self, policyFolder, dataMapFolder, dataHouseholdFolder, year):
@@ -4808,8 +4855,11 @@ class Sim:
                     if person.symptomsLevel == 'severe' or person.symptomsLevel == 'critical' or person.symptomsLevel == 'dead':
                         careNeed = 0
                     elif person.symptomsLevel == 'mild':
-                        careNeed += (self.p['careDemandInHours'][4]-careNeed)*np.exp(person.mildConditionIndex)
-                        careNeed = int((careNeed+self.p['quantumCare']/2)/self.p['quantumCare'])*self.p['quantumCare']
+                        # People not hospitalized, depending on the severity of their condition, develop care needs.
+                        covidCareFactor = person.mildConditionIndex - self.p['symptomSocialCareThreshold']
+                        if covidCareFactor > 0:
+                            careNeed += float(self.p['careDemandInHours'][4]-careNeed)*covidCareFactor
+                            careNeed = int((careNeed+self.p['quantumCare']/2)/self.p['quantumCare'])*self.p['quantumCare']
                     
                 person.hoursSocialCareDemand = careNeed
                 person.unmetSocialCareNeed = person.hoursSocialCareDemand
@@ -4918,7 +4968,7 @@ class Sim:
 #            for worker in employed:
 #                worker.income = worker.residualWorkingHours*worker.wage
                     
-            childrenInHospital = [x for x in children if x.symptomsLevel == 'severe' or x.symptomsLevel == 'critical' or x.symptomsLevel == 'dead']  
+            childrenInHospital = [x for x in children if x.symptomatic == True and (x.symptomsLevel == 'severe' or x.symptomsLevel == 'critical' or x.symptomsLevel == 'dead')]  
             for child in childrenInHospital:
                 child.unmetChildCareNeed = 0
                 child.netChildCareDemand = child.unmetChildCareNeed
@@ -5076,13 +5126,14 @@ class Sim:
                 if member.status == 'teenager':
                     supplies = list(self.p['teenagerSupply'])
                     if member.symptomatic == True:
-                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead':
+                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead' or member.mildConditionIndex > self.p['symptomSocialCareThreshold']:
                             supplies = [0 for x in supplies]
                         elif member.symptomsLevel == 'mild':
-                            supplies = [x*(1.0-np.exp(member.mildConditionIndex)) for x in supplies]
+                            supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
-                        homeSupply = supplies[0]
-                        otherSupplies = [x*self.p['supplyReductionRate'] for x in supplies[1:]]
+                        if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
+                            homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
+                        otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
                         supplies = [homeSupply]
                         supplies.extend(otherSupplies)
                     supplies = [int((x+self.p['quantumCare']/2)/self.p['quantumCare'])*self.p['quantumCare'] for x in supplies]
@@ -5092,13 +5143,14 @@ class Sim:
                 elif member.status == 'student' and member.outOfTownStudent == False:
                     supplies = list(self.p['studentSupply'])
                     if member.symptomatic == True:
-                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead':
+                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead' or member.mildConditionIndex > self.p['symptomSocialCareThreshold']:
                             supplies = [0 for x in supplies]
                         elif member.symptomsLevel == 'mild':
-                            supplies = [x*(1.0-np.exp(member.mildConditionIndex)) for x in supplies]
+                            supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
-                        homeSupply = supplies[0]
-                        otherSupplies = [x*self.p['supplyReductionRate'] for x in supplies[1:]]
+                        if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
+                            homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
+                        otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
                         supplies = [homeSupply]
                         supplies.extend(otherSupplies)
                     supplies = [int((x+self.p['quantumCare']/2)/self.p['quantumCare'])*self.p['quantumCare'] for x in supplies]
@@ -5108,13 +5160,13 @@ class Sim:
                 elif member.status == 'retired':
                     supplies = list(self.p['retiredSupply'])
                     if member.symptomatic == True:
-                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead':
+                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead' or member.mildConditionIndex > self.p['symptomSocialCareThreshold']:
                             supplies = [0 for x in supplies]
                         elif member.symptomsLevel == 'mild':
-                            supplies = [x*(1.0-np.exp(member.mildConditionIndex)) for x in supplies]
+                            supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
                         homeSupply = supplies[0]
-                        otherSupplies = [x*self.p['supplyReductionRate'] for x in supplies[1:]]
+                        otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
                         supplies = [homeSupply]
                         supplies.extend(otherSupplies)
                     supplies = [int((x+self.p['quantumCare']/2)/self.p['quantumCare'])*self.p['quantumCare'] for x in supplies]
@@ -5124,13 +5176,14 @@ class Sim:
                 elif member.status == 'worker' and member.careNeedLevel == 0:
                     supplies = list(self.p['employedSupply'])
                     if member.symptomatic == True:
-                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead':
+                        if member.symptomsLevel == 'severe' or member.symptomsLevel == 'critical' or member.symptomsLevel == 'dead' or member.mildConditionIndex > self.p['symptomSocialCareThreshold']:
                             supplies = [0 for x in supplies]
                         elif member.symptomsLevel == 'mild':
-                            supplies = [x*(1.0-np.exp(member.mildConditionIndex)) for x in supplies]
+                            supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
-                        homeSupply = supplies[0]
-                        otherSupplies = [x*self.p['supplyReductionRate'] for x in supplies[1:]]
+                        if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
+                            homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
+                        otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
                         supplies = [homeSupply]
                         supplies.extend(otherSupplies)
                     supplies = [int((x+self.p['quantumCare']/2)/self.p['quantumCare'])*self.p['quantumCare'] for x in supplies]
@@ -6504,7 +6557,7 @@ class Sim:
 
     def doStats(self, day, policyFolder, dataMapFolder, dataHouseholdFolder):
         """Calculate annual stats and store them appropriately."""
-
+        
         self.times.append(day)
 
         currentPop = len(self.pop.livingPeople)
@@ -6667,7 +6720,7 @@ class Sim:
         q3_unmetSocialCareNeed = sum([x.totalUnmetSocialCareNeed for x in q3_households])
         q4_unmetSocialCareNeed = sum([x.totalUnmetSocialCareNeed for x in q4_households])
         q5_unmetSocialCareNeed = sum([x.totalUnmetSocialCareNeed for x in q5_households])
-        
+       
         taxPayers = len([x for x in self.pop.livingPeople if x.status == 'student' or x.status == 'worker'])
         self.numTaxpayers.append(taxPayers)
         
@@ -6694,7 +6747,7 @@ class Sim:
                     totalMarriedAdultWomen += 1
         marriagePropNow = float(totalMarriedAdultWomen) / float(totalAdultWomen)
         self.marriageProp.append(marriagePropNow)
-
+       
         formalChildCare = sum([x.formalChildCareReceived for x in self.pop.livingPeople])
         formalChildCareCost = formalChildCare*self.p['priceChildCare']
         householdsIncome = sum([x.householdIncome for x in self.map.occupiedHouses])
@@ -6719,7 +6772,6 @@ class Sim:
         totalSuppliers = [x for x in over16Pop if x.socialWork > 0]
         shareCareGivers = float(len(totalSuppliers))/float(len(over16Pop))
         familyCarers = [x for x in over16Pop if x.careForFamily == True]
-        
         
         malesOver16 = [x for x in over16Pop if x.sex == 'male']
         femalesOver16 = [x for x in over16Pop if x.sex == 'female']
@@ -6777,10 +6829,14 @@ class Sim:
         share_10PlusHours_over70 = 0
         if len(over70_carers) > 0:
             share_10PlusHours_over70 = float(len(TenPlusHours_over70))/float(len(over70_carers))
+            
         
         self.costTaxFreeSocialCare = totalFormalSocialCare*self.p['priceSocialCare']*self.p['socialCareTaxFreeRate']
         
-        publicCareToGDP = self.costPublicSocialCare/self.grossDomesticProduct
+        publicCareToGDP = 0
+        if self.grossDomesticProduct > 0:
+            publicCareToGDP = self.costPublicSocialCare/self.grossDomesticProduct
+            
         
         self.susceptibles = len([x for x in self.pop.livingPeople if x.healthStatus == 'susceptible'])
         print self.susceptibles
@@ -6791,16 +6847,15 @@ class Sim:
         self.mildSymptomatic = len([x for x in self.pop.livingPeople if x.symptomatic == True and x.symptomsLevel == 'mild'])
         self.hospitalized = len([x for x in self.pop.livingPeople if x.hospitalized == True])
         self.intubated = len([x for x in self.pop.livingPeople if x.hospitalized == True and (x.symptomsLevel == 'critical' or x.symptomsLevel == 'dead')])
-        # self.gdpRatio = float(sum([x.workingShare for x in self.pop.livingPeople]))/float(len(self.pop.livingPeople))
         
+        # self.gdpRatio = float(sum([x.workingShare for x in self.pop.livingPeople]))/float(len(self.pop.livingPeople))
         
         outputs = [day, currentPop, everLivedPop, numHouseholds, averageHouseholdSize, self.marriageTally, marriagePropNow, 
                    self.divorceTally, shareSingleParents, shareFemaleSingleParent, taxPayers, taxBurden, familyCareRatio, 
                    shareEmployed, shareWorkHours, self.publicSocialCare, self.costPublicSocialCare, self.sharePublicSocialCare, 
                    self.costTaxFreeSocialCare, self.publicChildCare, self.costPublicChildCare, self.sharePublicChildCare, 
                    self.costTaxFreeChildCare, self.totalTaxRevenue, self.totalPensionRevenue, self.pensionExpenditure, 
-                   self.totalHospitalizationCost, self.socialClassShares[0], self.socialClassShares[1], self.socialClassShares[2], 
-                   self.socialClassShares[3], self.socialClassShares[4], totalInformalChildCare, formalChildCare, childcareIncomeShare, 
+                   self.totalHospitalizationCost, totalInformalChildCare, formalChildCare, childcareIncomeShare, 
                    shareInformalChildCare, shareCareGivers, ratioFemaleMaleCarers, shareMaleCarers, shareFemaleCarers, ratioWage, 
                    ratioIncome, shareFamilyCarer, share_over20Hours_FamilyCarers, averageHoursOfCare, share_40to64_carers, 
                    share_over65_carers, share_10PlusHours_over70, totalSocialCareNeed, totalInformalSocialCare, totalFormalSocialCare, 
@@ -6825,6 +6880,7 @@ class Sim:
             for house in self.map.allHouses:
                 data = [house.town.x, house.town.y, house.x, house.y, len(house.occupants), house.totalUnmetSocialCareNeed]
                 writer.writerow(data)
+        
                 
         householdFile = 'DataHousehold_' + str(self.year) + '.csv'
         if not os.path.exists(dataHouseholdFolder):
