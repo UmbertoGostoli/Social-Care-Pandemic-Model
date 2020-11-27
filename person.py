@@ -15,11 +15,13 @@ class Person:
         self.fatherID = -1 # For pickle
         self.age = age
         self.ageClass = 0
+        self.interactionAgeClass = 0
+        self.mortalityAgeClass = 0
         self.status = status
         self.lifeExpectancy = 0
         self.independentStatus = independence
         self.maternityStatus = False
-        
+    
         # Pandemic variables
         self.healthStatus = healthStatus
         self.severityLevel = 0
@@ -41,6 +43,18 @@ class Person:
         self.adw = 0
         self.cdw = 0
         self.gdw = 0
+        self.numContacts = 0
+        self.domesticRiskFactor = 0
+        self.communalRiskFactor = 0
+        self.contagiousnessIndex = 0
+        self.viralLoad = 0
+        self.relativeRisk = 0
+        self.contactReductionRate = 1.0
+        self.testPositive = False
+        self.dailyContacts = []
+        self.socialContacts = nx.DiGraph()
+        self.kinshipContacts = nx.DiGraph()
+        self.genderWeight = 1.0
         
         self.children = []
         self.childrenID = [] # For pickle
