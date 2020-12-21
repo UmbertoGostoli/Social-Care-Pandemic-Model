@@ -1,4 +1,3 @@
-combinationKey,beta,symptomsContagiousnessExp,asymptomaticContagiousnessFactor,mildExponentialPar
-3,0.15,0.25,0.25,0.05
-,0.2,0.5,0.5,0.1
-,0.25,0.75,0.75,0.15
+combinationKey,classContactBias,householdIsolationFactor,socialPreferenceFactor,incomeBehaviourExp,riskBehaviourFactor,locationInteractionBeta,betaCare
+0,1.05,0.5,0.5,0.2,0.02,0.001,0.1
+,1.1,0.7,0.7,0.5,0.05,0.0005,0.15

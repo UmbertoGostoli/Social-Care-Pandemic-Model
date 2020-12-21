@@ -46,6 +46,7 @@ class Person:
         self.numContacts = 0
         self.domesticRiskFactor = 0
         self.communalRiskFactor = 0
+        self.careRiskFactor = 0
         self.contagiousnessIndex = 0
         self.viralLoad = 0
         self.relativeRisk = 0
@@ -54,7 +55,10 @@ class Person:
         self.dailyContacts = []
         self.socialContacts = nx.DiGraph()
         self.kinshipContacts = nx.DiGraph()
+        self.socialContacIDs = []
+        self.contactWeights = []
         self.genderWeight = 1.0
+        self.nokCareContacts = []
         
         self.children = []
         self.childrenID = [] # For pickle
@@ -141,6 +145,11 @@ class Person:
         self.suppliers = []
         self.id = Person.counter
         Person.counter += 1
+        
+class CareContact:
+    def __init__ (self, contact, hoursOfCare):
+        self.contact = contact
+        self.contactDuration = hoursOfCare
 
 class Population:
     """The population class stores a collection of persons."""

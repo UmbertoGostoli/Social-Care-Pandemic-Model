@@ -1,5 +1,6 @@
 
 from person import Person
+from person import CareContact
 from person import Population
 from house import House
 from house import Town
@@ -71,7 +72,8 @@ class Sim:
                         'q4_socialCareNeed', 'q4_informalSocialCare', 'q4_formalSocialCare', 'q4_unmetSocialCareNeed', 'q4_outOfWorkSocialCare',
                         'q5_socialCareNeed', 'q5_informalSocialCare', 'q5_formalSocialCare', 'q5_unmetSocialCareNeed', 'q5_outOfWorkSocialCare',
                         'grossDomesticProduct', 'publicCareToGDP', 'susceptibles', 'exposed', 'infectious', 'recovered', 'totalDeaths', 
-                        'hospitalized', 'intubated', 'deaths', 'asymptomatic', 'mildCondition', 'newCases', 'over70Hospitalized', 'over70Intubated', 
+                        'hospitalized', 'intubated', 'deaths', 'asymptomatic', 'mildCondition', 'newCases', 'newExposed', 'over70Hospitalized', 
+                        'over70Intubated', 
                         'lockdownState', 'q1_infected', 'q1_hospitalized', 'q1_intubated', 'q2_infected', 'q2_hospitalized', 'q2_intubated',
                         'q3_infected', 'q3_hospitalized', 'q3_intubated', 'q4_infected', 'q4_hospitalized', 'q4_intubated', 'q5_infected', 
                         'q5_hospitalized', 'q5_intubated', 'totalHospitalized']
@@ -141,6 +143,12 @@ class Sim:
         self.statePensionExpenditure = []
         self.pensionExpenditure = 0
         
+        self.probSymptomatic = []
+        self.probsHospitalization = []
+        self.probsIntensiveCare = []
+        self.intubatedFatalityRatio = []
+        self.infectionFatalityRatio = []
+        
         ## Pandemic variables  #####
         self.susceptibles = 0
         self.exposed = 0
@@ -164,6 +172,7 @@ class Sim:
         self.periodFirstIntubated = -1
         self.periodFirstDeath = -1
         self.maxNewCases = 0
+        self.newCasesRatios = []
         self.lockdownMaxCases = 0
         self.lockdownDay = -1
         self.lockdown = False
@@ -175,16 +184,16 @@ class Sim:
         self.probsDeathIntubated = []
         # Statistics
         self.shareConditions = []
-        self.infectedByClass = [0]*self.p['incomeClasses']
-        self.infectedByAge = [0]*self.p['ageClasses']
-        self.deathsByClass = [0]*self.p['incomeClasses']
-        self.deathsByAge = [0]*self.p['ageClasses']
-        self.hospitalizedByClass = [0]*self.p['incomeClasses']
-        self.hospitalizedByAge = [0]*self.p['ageClasses']
-        self.intubatedByClass = [0]*self.p['incomeClasses']
-        self.intubatedByAge = [0]*self.p['ageClasses']
-        self.symptomaticByClass = [0]*self.p['incomeClasses']
-        self.symptomaticByAge = [0]*self.p['ageClasses']
+        self.infectedByClass = [0]*int(self.p['incomeClasses'])
+        self.infectedByAge = [0]*int(self.p['ageClasses'])
+        self.deathsByClass = [0]*int(self.p['incomeClasses'])
+        self.deathsByAge = [0]*int(self.p['ageClasses'])
+        self.hospitalizedByClass = [0]*int(self.p['incomeClasses'])
+        self.hospitalizedByAge = [0]*int(self.p['ageClasses'])
+        self.intubatedByClass = [0]*int(self.p['incomeClasses'])
+        self.intubatedByAge = [0]*int(self.p['ageClasses'])
+        self.symptomaticByClass = [0]*int(self.p['incomeClasses'])
+        self.symptomaticByAge = [0]*int(self.p['ageClasses'])
         self.totalHospitalized = 0
         
         self.exposedPeriod = 0
@@ -553,6 +562,14 @@ class Sim:
             person.father = None
             person.children = []
             person.house = None
+            
+            person.socialContacIDs = []
+            person.contactWeights = []
+            for agent in [x for x in person.socialContacts.nodes() if x != person]:
+                person.socialContacIDs.append(agent.id)
+                person.contactWeights.append(person.socialContacts[person][agent]['weight'])
+            
+            person.socialContacts.clear()
         
         for house in self.map.allHouses:
             house.occupantsID = [x.id for x in house.occupants]
@@ -560,6 +577,7 @@ class Sim:
         
     def from_IDs_to_Agents(self):
         for person in self.pop.allPeople:
+            
             if person.motherID != -1:
                 person.mother = [x for x in self.pop.allPeople if x.id == person.motherID][0]
             else:
@@ -570,6 +588,14 @@ class Sim:
                 person.father = None
                 
             person.children = [x for x in self.pop.allPeople if x.id in person.childrenID]
+            
+            person.socialContacts.add_node(person)
+            
+            for index in range(len(person.socialContacIDs)):
+                contact = [x for x in self.pop.allPeople if x.id == person.socialContacIDs[index]][0]
+                contactWeight = person.contactWeights[index]
+                person.socialContacts.add_edge(person, contact, weight = contactWeight)
+                
             
         for person in self.pop.allPeople:
             person.house = [x for x in self.map.allHouses if x.id == person.houseID][0]
@@ -587,12 +613,12 @@ class Sim:
         #################################
         
         ## Social care process  ########
-        
-        self.resetCareVariables_KN()
             
         # self.kinshipNetworks()
         
         if self.p['socialCareProvision'] == True:
+            
+            self.resetCareVariables_KN()
        
             self.computeSocialCareNeeds_W()
     
@@ -631,6 +657,7 @@ class Sim:
     def mobilityRates(self):
 
         newCasesRatio = float(self.newCases)/float(len(self.pop.livingPeople))
+        self.newCasesRatios.append(newCasesRatio)
         print 'Ratio: ' + str(newCasesRatio)
         
         for person in self.pop.livingPeople:
@@ -648,23 +675,41 @@ class Sim:
                 if person.testPositive == False:
                     workingFactor = 1.0
                     if person.status == 'worker':
-                        workingFactor = self.p['workingFactorReduction']
+                        workingFactor = self.p['workingFactorReduction'][person.incomeQuintile]
                     # casesResponseExp = (np.exp(behaviouralResponseExp*(person.incomeQuintile+1)*workingFactor*person.relativeRisk)-1.0)*self.p['scaleFactor']
                     # Alternative formulation
+                    
+                    # Change: make the response proportional on infection fatality ratio
+                    
                     incomeFactor = math.exp(self.p['incomeBehaviourExp']*float(person.incomeQuintile+1))
-                    ageFactor = math.exp(self.p['ageBehaviourExp']*float(person.ageClass+1))
-                    casesResponseExp = behaviouralResponseFactor*incomeFactor*ageFactor*workingFactor
+                    
+                    # Risk factor: to substitute to ageFactor
+                    risk = self.infectionFatalityRatio[person.ageClass][person.incomeQuintile][0]
+                    if person.sex == 'female':
+                        risk = self.infectionFatalityRatio[person.ageClass][person.incomeQuintile][1]
+                    riskFactor = self.p['riskBehaviourFactor']*risk
+                    
+                    # ageFactor = math.exp(self.p['ageBehaviourExp']*float(person.ageClass+1))
+                    casesResponseExp = behaviouralResponseFactor*incomeFactor*riskFactor*workingFactor # ageFactor
                 else:
                     behaviouralResponseFactor *= self.p['socialPreferenceFactor']
                     workingFactor = 1.0
                     if person.status == 'worker':
-                        workingFactor = self.p['workingFactorReduction']
+                        workingFactor = self.p['workingFactorReduction'][person.incomeQuintile]
                     # casesResponseExp = (np.exp(behaviouralResponseExp*(person.incomeQuintile+1)*workingFactor*person.relativeRisk)-1.0)*self.p['scaleFactor']
                     # Alternative formulation
                     incomeFactor = math.exp(self.p['incomeBehaviourExp']*(person.incomeQuintile+1))
                     casesResponseExp = behaviouralResponseFactor*incomeFactor*workingFactor
+                    
+                newCasesDiscounted = 0
+                den = 0
+                for i in range(len(self.newCasesRatios)):
+                    newCasesDiscounted += self.newCasesRatios[i]*np.power(self.p['timeDiscountingFactor'], i)
+                    den += np.power(self.p['timeDiscountingFactor'], i)
                 
-                behaviouralIsolationRate = 1.0/np.exp(casesResponseExp*newCasesRatio)
+                newCasesIndex = float(newCasesDiscounted)/float(den)
+                
+                behaviouralIsolationRate = 1.0/np.exp(casesResponseExp*newCasesIndex)
                 
                 if behaviouralIsolationRate < person.contactReductionRate:
                     person.contactReductionRate = behaviouralIsolationRate
@@ -697,12 +742,12 @@ class Sim:
             person.socialContacts.add_node(person)
         
         if self.p['5yearAgeClasses'] == False:
-            ageClasses = self.p['ageClasses']
+            ageClasses = int(self.p['ageClasses'])
         else:
-            ageClasses = self.p['interactionAgeClasses']
+            ageClasses = int(self.p['interactionAgeClasses'])
         
         for i in range(ageClasses):
-            for j in range(self.p['incomeClasses']):
+            for j in range(int(self.p['incomeClasses'])):
                 groupMaxContacts = maxContacts[i][j]
                 totContacts = sum([self.classContactsMatrix[i][x][j] for x in range(ageClasses)])
                 if self.p['5yearAgeClasses'] == False:
@@ -754,10 +799,10 @@ class Sim:
             if len(friends) > 0:
                 quintile = agent.incomeQuintile
                 if self.p['5yearAgeClasses'] == False:
-                    ageClasses = self.p['ageClasses']
+                    ageClasses = int(self.p['ageClasses'])
                     agentAgeGroup = agent.ageClass
                 else:
-                    ageClasses = self.p['interactionAgeClasses']
+                    ageClasses = int(self.p['interactionAgeClasses'])
                     agentAgeGroup = agent.interactionAgeClass
                 averageContacts = sum([self.classContactsMatrix[agentAgeGroup][x][quintile] for x in range(ageClasses)])
                 isolationRates = [x.contactReductionRate for x in friends]
@@ -786,10 +831,10 @@ class Sim:
     def exposureProcess(self, day):
         
         print 'Probs deaths if intubated: ' + str(self.probsDeathIntubated)
-        
-        self.newCases = 0
+        self.newExposed = 0
+        # self.newCases = 0
         ### Exogenous exposure: some agents are exposed from outside  ######
-        newExposed = []
+        exposedAgents = []
         internationalExposed = []
         if self.lockdown == False:
             travellers = [x for x in self.pop.livingPeople if x.healthStatus == 'susceptible' and x.age >= 18]
@@ -808,8 +853,8 @@ class Sim:
                 print 'Exogenous infections: ' + str(exogenouslyInfected)
                 
                 for person in internationalExposed:
-                    newExposed.append(person)
-                    self.newCases += 1
+                    exposedAgents.append(person)
+                    self.newExposed += 1
                     self.infectedByClass[person.incomeQuintile] += 1
                     self.infectedByAge[person.ageClass] += 1
         
@@ -818,14 +863,19 @@ class Sim:
                     person.daysFromInfection = 0
                     person.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                     person.viralLoad = np.random.random()
-
-                    if np.random.random() > self.p['probSymptomatic'][person.ageClass]:
+                    genderIndex = 0
+                    if person.sex == 'female':
+                        genderIndex = 1
+                        
+                    prob = self.probSymptomatic[person.ageClass][person.incomeQuintile][genderIndex]
+                    if np.random.random() > prob: # self.p['probSymptomatic'][person.ageClass]:
                         # In this case the agent is asymptomatic
                         person.severityLevel = 1
                         person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                         person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                     else:
-                        if np.random.random() > self.p['probsHospitalization'][person.ageClass]/100:
+                        prob = self.probsHospitalization[person.ageClass][person.incomeQuintile][genderIndex]
+                        if np.random.random() > prob: # self.p['probsHospitalization'][person.ageClass]:
                             # In this case, agent is not hospitalized
                             person.severityLevel = 2
                             person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
@@ -834,7 +884,8 @@ class Sim:
                             self.symptomaticByAge[person.ageClass] += 1
                         else:
                             self.totalHospitalized += 1
-                            if np.random.random() > self.p['probsIntensiveCare'][person.ageClass]/100:
+                            prob = self.probsIntensiveCare[person.ageClass][person.incomeQuintile][genderIndex]
+                            if np.random.random() > prob: # self.p['probsIntensiveCare'][person.ageClass]:
                                 # In this case, agent is not in intensive care
                                 person.severityLevel = 3
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
@@ -842,7 +893,8 @@ class Sim:
                                 self.hospitalizedByClass[person.incomeQuintile] += 1
                                 self.hospitalizedByAge[person.ageClass] += 1
                             else:
-                                if np.random.random() > self.probsDeathIntubated[person.ageClass]:
+                                prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
+                                if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
                                     # In this case, agent is not dead
                                     person.severityLevel = 4
                                     person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
@@ -866,17 +918,25 @@ class Sim:
         
         for person in susceptible:
             dailyContacts = len(person.dailyContacts)
-            averageContagiousness = np.mean([x.contagiousnessIndex for x in person.dailyContacts])
+            averageContagiousness = 0
+            if len(person.dailyContacts) > 0:
+                averageContagiousness = np.mean([x.contagiousnessIndex for x in person.dailyContacts])
             person.communalRiskFactor = float(dailyContacts)*averageContagiousness
+            person.careRiskFactor = 0
+            if len(person.nokCareContacts) > 0:
+                for careContact in person.nokCareContacts:
+                    durationFactor = math.pow(careContact.contactDuration, self.p['contactDurationExp'])
+                    person.careRiskFactor = careContact.contact.contagiousnessIndex*durationFactor
 
             # Compute probability of infection
             communalInfectionIndex = self.p['betaCommunity']*person.communalRiskFactor
             householdInfectionIndex = self.p['betaHousehold']*person.domesticRiskFactor
-            infectionIndex = communalInfectionIndex+householdInfectionIndex
+            careInfectionIndex = self.p['betaCare']*person.careRiskFactor
+            infectionIndex = communalInfectionIndex+householdInfectionIndex+careInfectionIndex
             probInfection = (math.exp(infectionIndex)-1.0)/math.exp(infectionIndex)
             if np.random.random() < probInfection:
-                newExposed.append(person)
-                self.newCases += 1
+                exposedAgents.append(person)
+                self.newExposed += 1
                 self.infectedByClass[person.incomeQuintile] += 1
                 self.infectedByAge[person.ageClass] += 1
                 person.healthStatus = 'exposed'
@@ -884,14 +944,19 @@ class Sim:
                 person.daysFromInfection = 0
                 person.incubationPeriod = max(int(math.ceil(np.random.lognormal(self.p['meanIncubation'], self.p['sdIncubation']))), self.p['minIncubation'])
                 person.viralLoad = np.random.random()
-                
-                if np.random.random() > self.p['probSymptomatic'][person.ageClass]:
+                genderIndex = 0
+                if person.sex == 'female':
+                    genderIndex = 1
+
+                prob = self.probSymptomatic[person.ageClass][person.incomeQuintile][genderIndex]
+                if np.random.random() > prob: # self.p['probSymptomatic'][person.ageClass]:
                     # In this case the agent is asymptomatic
                     person.severityLevel = 1
                     person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                     person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                 else:
-                    if np.random.random() > self.p['probsHospitalization'][person.ageClass]/100:
+                    prob = self.probsHospitalization[person.ageClass][person.incomeQuintile][genderIndex]
+                    if np.random.random() > prob: # self.p['probsHospitalization'][person.ageClass]:
                         # In this case, agent is NOT hospitalized (i..e develops mild conditions)
                         person.severityLevel = 2
                         person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
@@ -900,15 +965,17 @@ class Sim:
                         self.symptomaticByAge[person.ageClass] += 1
                     else:   ## In this case is hospitalized
                         self.totalHospitalized += 1
-                        if np.random.random() > self.p['probsIntensiveCare'][person.ageClass]/100:
-                            # In this case, agent is NOT in intensive care
+                        prob = self.probsIntensiveCare[person.ageClass][person.incomeQuintile][genderIndex]
+                        if np.random.random() > prob: # self.p['probsIntensiveCare'][person.ageClass]:
+                            # In this case, agent is NOT in intensive care (i.e. just hospitalized)
                             person.severityLevel = 3
                             person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                             person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                             self.hospitalizedByClass[person.incomeQuintile] += 1
                             self.hospitalizedByAge[person.ageClass] += 1
                         else:
-                            if np.random.random() > self.probsDeathIntubated[person.ageClass]:
+                            prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
+                            if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
                                 # In this case, agent is not dead
                                 person.severityLevel = 4
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
@@ -922,8 +989,8 @@ class Sim:
                                 person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                                 self.deathsByClass[person.incomeQuintile] += 1
                                 self.deathsByAge[person.ageClass] += 1
-                
-        newMild = [x for x in newExposed if x.symptomsLevel == 'mild']
+            
+        newMild = [x for x in exposedAgents if x.symptomsLevel == 'mild']
         numMild = len(newMild)
         # Assign severity of symptoms to agents with mild condition
         mildConditionIndex = [x for x in np.random.exponential(self.p['mildExponentialPar'], size=numMild)]
@@ -951,9 +1018,15 @@ class Sim:
         totAsymptomatic = totInfected - (totMild+totHospitalized+totIntubated+totDeaths)
         numConditions = [totAsymptomatic, totMild, totHospitalized, totIntubated, totDeaths]
         
+        for person in self.pop.livingPeople:
+            # Clean daily contacts
+            person.nokCareContacts = []
+            person.dailyContacts = []
+        
         self.shareConditions = [float(x)/float(sum(numConditions)) for x in numConditions]
         
-        print 'New cases : ' + str(self.newCases)  
+        print 'New exposed: ' + str(self.newExposed)
+          
         print 'Share conditions: ' + str(self.shareConditions)
         print 'Infected by age: ' + str(self.infectedByAge)
         print 'Infected by class: ' + str(self.infectedByClass)
@@ -984,7 +1057,7 @@ class Sim:
 #            print 'Lockdown started in day: ' + str(day)
 #        if self.daysToLockdown != -1:
 #            self.daysToLockdown -= 1
-            
+        self.newCases = 0
         for agent in infected:
             agent.daysFromInfection += 1
             if agent.healthStatus == 'exposed' and agent.daysFromInfection >= (agent.incubationPeriod-self.p['preSymptomsContagiousPeriod']):
@@ -993,6 +1066,7 @@ class Sim:
             elif agent.daysFromInfection == agent.incubationPeriod and agent.symptomsLevel != 'asymptomatic':
                 agent.symptomatic = True
                 if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
+                    self.newCases += 1
                     if self.periodFirstHospitalized == -1:
                         self.periodFirstHospitalized = day
                     agent.hospitalized = True
@@ -1032,12 +1106,14 @@ class Sim:
         for person in noTestMildAgents:
             probTest = math.pow(person.mildConditionIndex, self.p['probTestExp'])
             if np.random.random() < probTest:
+                self.newCases += 1
                 person.testPositive = True
             
         self.pop.livingPeople[:] = [x for x in self.pop.livingPeople if x.dead == False]
         postPop = len(self.pop.livingPeople)
         self.deathsForCovid = prePop-postPop
         self.totalDeaths += self.deathsForCovid
+        print 'New cases : ' + str(self.newCases)
         
         if self.lockdown == False and self.p['lockdownEvent'] == 'death' and self.periodFirstDeath != -1 and self.lockdownDay == -1:
             self.lockdownDay = day + self.p['daysFromEvent']
@@ -1176,7 +1252,10 @@ class Sim:
         if year == self.p['endYear']-1:
             print 'Setting weights....'
             self.setPandemicWeights()
-        
+            
+            # self.showProbs()
+            
+            # pdb.set_trace()
         # self.householdRelocation(policyFolder)
         
         # self.doStats(policyFolder, dataMapFolder, dataHouseholdFolder)
@@ -1190,16 +1269,26 @@ class Sim:
         endYear = time.time()
         
         print 'Year execution time: ' + str(endYear - startYear)
-
+    
+    def showProbs(self):
+        for i in range(int(self.p['ageClasses'])):
+            for j in range(int(self.p['incomeClasses'])):
+                for z in range(2):
+                    print 'Age: ' + str(i) + 'Income: ' + str(j) + 'Gender: ' + str(z) + 'Prob Symptomatic: ' + str(self.probSymptomatic[i][j][z])
+                    print 'Age: ' + str(i) + 'Income: ' + str(j) + 'Gender: ' + str(z) + 'Prob Hospital: ' + str(self.probsHospitalization[i][j][z])
+                    print 'Age: ' + str(i) + 'Income: ' + str(j) + 'Gender: ' + str(z) + 'Prob ICU: ' + str(self.probsIntensiveCare[i][j][z])
+                    print 'Age: ' + str(i) + 'Income: ' + str(j) + 'Gender: ' + str(z) + 'Prob Death: ' + str(self.intubatedFatalityRatio[i][j][z])
+                    print 'Age: ' + str(i) + 'Income: ' + str(j) + 'Gender: ' + str(z) + 'IFR: ' + str(self.infectionFatalityRatio[i][j][z])
+                    
         # print 'Did doStats'
     def setPandemicWeights(self):
         
         sizeAgeGroups = []
-        for i in range(self.p['numMortalityAgeClasses']+1):
+        for i in range(int(self.p['numMortalityAgeClasses']+1)):
             sizeAgeGroups.append(len([x for x in self.pop.livingPeople if x.mortalityAgeClass == i]))
         
         self.ifr = []
-        for i in range(0, self.p['numMortalityAgeClasses']-1, 2):
+        for i in range(0, int(self.p['numMortalityAgeClasses'])-1, 2):
             if i < 16:
                 f1 = float(sizeAgeGroups[i])/float(sizeAgeGroups[i]+sizeAgeGroups[i+1])
                 f2 = float(sizeAgeGroups[i+1])/float(sizeAgeGroups[i]+sizeAgeGroups[i+1])
@@ -1211,8 +1300,8 @@ class Sim:
                 self.ifr.append(self.p['infectionFatalityByAge'][i]*f1+self.p['infectionFatalityByAge'][i+1]*f2+self.p['infectionFatalityByAge'][i+2]*f3)
         
         self.probsDeathIntubated = []
-        for i in range(self.p['ageClasses']):
-            infectionIcuRate = self.p['probSymptomatic'][i]*(self.p['probsHospitalization'][i]/100)*(self.p['probsIntensiveCare'][i]/100)
+        for i in range(int(self.p['ageClasses'])):
+            infectionIcuRate = self.p['probSymptomatic'][i]*(self.p['probsHospitalization'][i])*(self.p['probsIntensiveCare'][i])
             
             print 'IFR: ' + str(self.ifr[i])
             print 'Infection ICU rate: ' + str(infectionIcuRate)
@@ -1220,11 +1309,82 @@ class Sim:
             # self.probsDeathIntubated.append((self.ifr[i]/100)/infectionIcuRate)
             
             ## Using the Ferguson et all paper Report 9 data.
-            self.probsDeathIntubated.append((self.p['infectionFatalityRatio'][i]/100)/infectionIcuRate)
+            self.probsDeathIntubated.append((self.p['infectionFatalityRatio'][i]/100.0)/infectionIcuRate)
         
         print 'Probs deaths if intubated: ' + str(self.probsDeathIntubated)
         
+        # Income- and gender-specific probabilities
+        
+        # Share of population in each age group by income class
+        sharesQuintilesByAge = []
+        sharesMalesByAgeAndIncome = []
+        for i in range(int(self.p['ageClasses'])):
+            sharesQuintile = []
+            sharesMales = []
+            if i < self.p['ageClasses']-1:
+                popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange'] and x.age < (i+1)*self.p['ageRange']-1]
+            else:
+                popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange']]
+            for j in range(int(self.p['incomeClasses'])):
+                popClass = [x for x in popAge if x.incomeQuintile == j]
+                popMaleInClass = [x for x in popClass if x.sex == 'male']
+                sharesMales.append(float(len(popMaleInClass))/float(len(popClass)))
+                sharesQuintile.append(float(len(popClass))/float(len(popAge)))
+            sharesQuintilesByAge.append(sharesQuintile)
+            sharesMalesByAgeAndIncome.append(sharesMales)
+        
+        # Share of males (and females) by age and income group
+        
+#        for i in range(int(self.p['ageClasses'])):
+#            if i < self.p['ageClasses']-1:
+#                popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange'] and x.age < (i+1)*self.p['ageRange']-1]
+#            else:
+#                popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange']]
+#            maleAge = [x for x in popAge if x.sex == 'male']
+#            sharesMalesByAge.append(float(len(maleAge))/float(len(popAge)))
+        
+        # den = (1.0/float(self.p['incomeClasses']))*a
+        for i in range(int(self.p['ageClasses'])):
+            
+            den = 0
+            for j in range(int(self.p['incomeClasses'])):
+                den += sharesQuintilesByAge[i][j]*math.pow(self.p['severityClassBias'], j)
+            
+            probClassAgeS = []
+            probClassAgeH = []
+            probClassAgeI = []
+            probClassAgeF = []
+            probClassAgeR = []
+            baseProbS = self.p['probSymptomatic'][i]/den
+            baseProbH = self.p['probsHospitalization'][i]/den
+            baseProbI = self.p['probsIntensiveCare'][i]/den
+            baseProbF = self.probsDeathIntubated[i]/den
+            baseProbR = (self.p['infectionFatalityRatio'][i]/100.0)/den
+            for j in range(int(self.p['incomeClasses'])):
+                classProbS = baseProbS*math.pow(self.p['severityClassBias'], j)
+                classProbH = baseProbH*math.pow(self.p['severityClassBias'], j)
+                classProbI = baseProbI*math.pow(self.p['severityClassBias'], j)
+                classProbF = baseProbF*math.pow(self.p['severityClassBias'], j)
+                classProbR = baseProbR*math.pow(self.p['severityClassBias'], j)
+                g = sharesMalesByAgeAndIncome[i][j] + (1.0-sharesMalesByAgeAndIncome[i][j])*self.p['severityGenderBias']
+                maleProbS = classProbS/g
+                maleProbH = classProbH/g
+                maleProbI = classProbI/g
+                maleProbF = classProbF/g
+                maleProbR = classProbR/g
+                probClassAgeS.append([maleProbS, maleProbS*self.p['severityGenderBias']])
+                probClassAgeH.append([maleProbH, maleProbH*self.p['severityGenderBias']])
+                probClassAgeI.append([maleProbI, maleProbI*self.p['severityGenderBias']])
+                probClassAgeF.append([maleProbF, maleProbF*self.p['severityGenderBias']])
+                probClassAgeR.append([maleProbR, maleProbR*self.p['severityGenderBias']])
+            self.probSymptomatic.append(probClassAgeS)
+            self.probsHospitalization.append(probClassAgeH)
+            self.probsIntensiveCare.append(probClassAgeI)
+            self.intubatedFatalityRatio.append(probClassAgeF)
+            self.infectionFatalityRatio.append(probClassAgeR)
+        
         # pdb.set_trace()
+
         
         # Compute age-classes shares
         ageShares = []
@@ -1264,14 +1424,14 @@ class Sim:
         maxContacts = []
         contactBias = self.p['classContactBias']
         if self.p['5yearAgeClasses'] == False:
-            ageClasses = self.p['ageClasses']
+            ageClasses = int(self.p['ageClasses'])
             contactsByAge = self.contactsMatrix
         else:
-            ageClasses = self.p['interactionAgeClasses']
+            ageClasses = int(self.p['interactionAgeClasses'])
             contactsByAge = self.contacts
         self.classContactsMatrix = []
         # Introducing contact increment to increase contacts in older people ##
-        contactIncrement = 1.0
+        contactIncrement = self.p['contactCompoundFactor']
         for i in range(ageClasses):
             contactsByClass = []
             ageGroupContacts = []
@@ -1280,7 +1440,7 @@ class Sim:
             for i in range(int(self.p['incomeClasses'])):
                 a += (1.0/float(self.p['incomeClasses']))*math.pow(contactBias, i)
             lowClassContacts = totalContacts/a
-            for j in range(self.p['incomeClasses']):
+            for j in range(int(self.p['incomeClasses'])):
                 classContacts = lowClassContacts*math.pow(contactBias, j)
                 contactsByClass.append(max(np.random.poisson(math.ceil(classContacts), 1000)))
             
@@ -1288,18 +1448,17 @@ class Sim:
             for j in range(ageClasses):
                 classContacts = []
                 lowClassContacts = contactsByAge[i][j]/a
-                for z in range(self.p['incomeClasses']):
+                for z in range(int(self.p['incomeClasses'])):
                     classContacts.append(lowClassContacts*math.pow(contactBias, z)*contactIncrement)
                 ageGroupContacts.append(classContacts)
             
             self.classContactsMatrix.append(ageGroupContacts)
             maxContacts.append(contactsByClass)
-            if i > 4:
-                contactIncrement *= self.p['over50CompoundFactor']
-            else:
-                contactIncrement *= self.p['below50CompoundFactor']
-        
-        print 'Contact Matrix: ' + str(self.classContactsMatrix)
+#            if i > 4:
+#                contactIncrement *= self.p['over50CompoundFactor']
+#            else:
+#                contactIncrement *= self.p['below50CompoundFactor']
+                
         # self.kinshipNetworks()
         
         self.socialNetworks(maxContacts)
@@ -1314,15 +1473,15 @@ class Sim:
             self.recoveryPeriods.append(recoveryDays[start:end])
             start = end
         
-        for person in self.pop.livingPeople:
-            person.aiw = self.p['infectionWeightsByAge'][person.ageClass]
-            person.ciw = self.p['infectionWeightsByClass'][person.incomeQuintile]
-            person.genderWeight = 1.0
-            if person.sex == 'male':
-                person.genderWeight = self.p['maleSeverityWeight']
-            person.adw = self.p['severityWeightsByAge'][person.ageClass]
-            person.relativeRisk = self.p['ageRiskFactor']*person.adw
-            person.cdw = self.p['severityWeightsByClass'][person.incomeQuintile]
+#        for person in self.pop.livingPeople:
+#            person.aiw = self.p['infectionWeightsByAge'][person.ageClass]
+#            person.ciw = self.p['infectionWeightsByClass'][person.incomeQuintile]
+#            person.genderWeight = 1.0
+#            if person.sex == 'male':
+#                person.genderWeight = self.p['maleSeverityWeight']
+#            person.adw = self.p['severityWeightsByAge'][person.ageClass]
+#            person.relativeRisk = self.p['ageRiskFactor']*person.adw
+#            person.cdw = self.p['severityWeightsByClass'][person.incomeQuintile]
         
         
 
@@ -2087,6 +2246,7 @@ class Sim:
             preReceiverCareNeed = receiver.unmetSocialCareNeed
             
             ###########################################################
+            
             suppliersWeights = list(receiver.weightedTotalSupplies)
             potentialSuppliers = list(receiver.suppliers)
             suppliersWeights.append(receiver.careSupplyFromWealth)
@@ -2999,6 +3159,25 @@ class Sim:
                     if i in receiver.house.occupants and careForNeed > 0:
                         i.careForFamily = True
                     i.socialWork += careForNeed
+                    
+                    ## Record contact details for exposure process
+                    if receiver.house.id != supplier.house.id: 
+                        # Add contact details to supplier care contact list
+                        if len([x for x in i.nokCareContacts if x.contact == receiver]) == 0:
+                            newContact = CareContact(receiver, careForNeed)
+                            i.nokCareContacts.append(newContact)
+                        else:
+                            careContact = [x for x in i.nokCareContacts if x.contact == receiver][0]
+                            careContact.contactDuration += careForNeed
+                        # Add contact details to receiver care contact list
+                        if len([x for x in receiver.nokCareContacts if x.contact == i]) == 0:
+                            newContact = CareContact(i, careForNeed)
+                            receiver.nokCareContacts.append(newContact)
+                        else:
+                            careContact = [x for x in receiver.nokCareContacts if x.contact == i][0]
+                            careContact.contactDuration += careForNeed
+                    ########################################################################################
+                            
                     if careForNeed > 0:
                         for j in range(4):
                             i.residualInformalSupplies[j] -= careForNeed
@@ -3129,6 +3308,24 @@ class Sim:
                         carer.outOfWorkSocialCare += careTransferred
                         carer.socialWork += careTransferred
                         carer.house.outOfWorkSocialCare += careTransferred
+                        
+                        ## Record contact details for exposure process
+                        if receiver.house.id != carer.house.id: 
+                            # Add contact details to supplier care contact list
+                            if len([x for x in carer.nokCareContacts if x.contact == receiver]) == 0:
+                                newContact = CareContact(receiver, careForNeed)
+                                carer.nokCareContacts.append(newContact)
+                            else:
+                                careContact = [x for x in carer.nokCareContacts if x.contact == receiver][0]
+                                careContact.contactDuration += careForNeed
+                            # Add contact details to receiver care contact list
+                            if len([x for x in receiver.nokCareContacts if x.contact == carer]) == 0:
+                                newContact = CareContact(carer, careForNeed)
+                                receiver.nokCareContacts.append(newContact)
+                            else:
+                                careContact = [x for x in receiver.nokCareContacts if x.contact == carer][0]
+                                careContact.contactDuration += careForNeed
+                        ########################################################################################
                         
                         if receiver.house.id == supplier.house.id:
                             self.inHouseInformalCare += careTransferred
@@ -5060,7 +5257,7 @@ class Sim:
                 # Adjust care needs to account for virus symptoms
                 if person.symptomatic == True:
                     if person.symptomsLevel == 'severe' or person.symptomsLevel == 'critical' or person.symptomsLevel == 'dead':
-                        careNeed = 0
+                        careNeed = 0 # The person is hospitalized, so the hospital takes care of all the care needs
                     elif person.symptomsLevel == 'mild':
                         # People not hospitalized, depending on the severity of their condition, develop care needs.
                         covidCareFactor = person.mildConditionIndex - self.p['symptomSocialCareThreshold']
@@ -5558,6 +5755,7 @@ class Sim:
                 relocated += 1
                 
                 peopleToMove = [x for x in house.occupants]
+                person = peopleToMove[0]
                 
                 if person.house == self.displayHouse:
                     messageString = str(self.year) + ": #" + str(person.id) + " and #" + str(person.partner.id) + " move house"
@@ -7155,7 +7353,7 @@ class Sim:
                    q5_socialCareNeed, q5_informalSocialCare, q5_formalSocialCare, q5_unmetSocialCareNeed, q5_outOfWorkSocialCare,
                    self.grossDomesticProduct, publicCareToGDP, self.susceptibles, self.exposed, self.infectious, self.recovered, 
                    self.totalDeaths, self.hospitalized, self.intubated, self.deathsForCovid, self.asymptomatic, self.mildSymptomatic,
-                   self.newCases, self.over70Hospitalized, self.over70Intubated, self.lockdown, q1_infected, q1_hospitalized, q1_intubated,
+                   self.newCases, self.newExposed, self.over70Hospitalized, self.over70Intubated, self.lockdown, q1_infected, q1_hospitalized, q1_intubated,
                    q2_infected, q2_hospitalized, q2_intubated, q3_infected, q3_hospitalized, q3_intubated, q4_infected, q4_hospitalized, q4_intubated,
                    q5_infected, q5_hospitalized, q5_intubated, self.totalHospitalized]
         
@@ -7267,14 +7465,14 @@ class Sim:
 
             
     def healthCareCost(self):
-
-        peopleWithUnmetNeed = [x for x in self.pop.livingPeople if x.careNeedLevel > 0]
-        self.totalHospitalizationCost = 0
-        for person in peopleWithUnmetNeed:
-            needLevelFactor = math.pow(self.p['needLevelParam'], person.careNeedLevel)
-            unmetSocialCareFactor = math.pow(self.p['unmetSocialCareParam'], person.averageShareUnmetNeed)
-            averageHospitalization = self.p['hospitalizationParam']*needLevelFactor*unmetSocialCareFactor
-            self.totalHospitalizationCost += averageHospitalization*self.p['costHospitalizationPerDay']
+        
+        self.totalHospitalizationCost = self.p['costHospitalizationPerDay']*len([x for x in self.pop.allPeople if x.hospitalized == True])
+#        peopleWithUnmetNeed = [x for x in self.pop.livingPeople if x.careNeedLevel > 0]
+#        for person in peopleWithUnmetNeed:
+#            needLevelFactor = math.pow(self.p['needLevelParam'], person.careNeedLevel)
+#            unmetSocialCareFactor = math.pow(self.p['unmetSocialCareParam'], person.averageShareUnmetNeed)
+#            averageHospitalization = self.p['hospitalizationParam']*needLevelFactor*unmetSocialCareFactor
+#            self.totalHospitalizationCost += averageHospitalization*self.p['costHospitalizationPerDay']
         self.hospitalizationCost.append(self.totalHospitalizationCost)
         
     def initializeCanvas(self):
