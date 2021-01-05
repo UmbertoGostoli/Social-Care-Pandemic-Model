@@ -399,7 +399,7 @@ class Sim:
                 
                 self.maxNewCases = pickle.load(open(self.folder + '/Policy_0/save.n', 'rb'))
                 self.totalDeaths = pickle.load(open(self.folder + '/Policy_0/save.d', 'rb'))
-                # self.lockdownDay = pickle.load(open(self.folder + '/Policy_0/save.l', 'rb'))
+                self.lockdownDay = pickle.load(open(self.folder + '/Policy_0/save.l', 'rb'))
                 self.from_IDs_to_Agents()
                 
                 # Upload outputs
@@ -805,10 +805,12 @@ class Sim:
                     ageClasses = int(self.p['interactionAgeClasses'])
                     agentAgeGroup = agent.interactionAgeClass
                 averageContacts = sum([self.classContactsMatrix[agentAgeGroup][x][quintile] for x in range(ageClasses)])
+                if self.lockdown == True:
+                    averageContacts *= self.p['lockdownContactReductionRate']
                 isolationRates = [x.contactReductionRate for x in friends]
                 averageIsolationRate = np.mean(isolationRates)
-                normalNumContacts = np.random.poisson(averageContacts)
-                numContacts = int(round(float(normalNumContacts)*agent.contactReductionRate*averageIsolationRate))
+                meanNumContacts = float(averageContacts)*agent.contactReductionRate*averageIsolationRate
+                numContacts = np.random.poisson(meanNumContacts)
                 # Now, the contacts are randomly sampled from the agent's social network
                 if numContacts > len(friends):
                     numContacts = len(friends)
@@ -4871,7 +4873,9 @@ class Sim:
                             if nok.dead == False and nok not in household and nok.house not in visited:
                                 house.careNetwork.add_edge(house, nok.house, distance = 3)
                                 visited.append(nok.house)
-                                
+        
+        # Add the lockdown conditions...
+        
         peopleInNeed = [x for x in self.pop.livingPeople if x.unmetSocialCareNeed > 0]
         for person in peopleInNeed:
             visited = []
@@ -4881,76 +4885,80 @@ class Sim:
                 otherMembers = [x for x in household if x.id != person.id]
                 person.careNetwork.add_edge(person, otherMembers[0], distance = 0)
                 visited.append(person.house)
+            
+            # If lockdown == False or careLockdown == False:
             # First level
-            if person.father != None:
-                nok = person.father
-                if nok.dead == False and nok.house not in visited:
-                    person.careNetwork.add_edge(person, nok, distance = 1)
-                    visited.append(nok.house)
-                nok = person.mother
-                if nok.dead == False and nok.house not in visited:
-                    person.careNetwork.add_edge(person, nok, distance = 1)
-                    visited.append(nok.house)
-            for child in person.children:
-                nok = child
-                if nok.dead == False and nok.house not in visited:
-                    person.careNetwork.add_edge(person, nok, distance = 1)
-                    visited.append(nok.house)
-            # Second level
-            if person.father != None:
-                if person.father.father != None:
-                    nok = person.father.father
+            
+            if self.p['lockdown'] == False or self.p['careLockdown'] == False:
+                if person.father != None:
+                    nok = person.father
                     if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 2)
+                        person.careNetwork.add_edge(person, nok, distance = 1)
                         visited.append(nok.house)
-                    nok = person.father.mother
+                    nok = person.mother
                     if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 2)
+                        person.careNetwork.add_edge(person, nok, distance = 1)
                         visited.append(nok.house)
-                if person.mother.father != None:
-                    nok = person.mother.father
+                for child in person.children:
+                    nok = child
                     if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 2)
+                        person.careNetwork.add_edge(person, nok, distance = 1)
                         visited.append(nok.house)
-                    nok = person.mother.mother
-                    if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 2)
-                        visited.append(nok.house)
-                brothers = list(set(person.father.children + person.mother.children))
-                brothers.remove(person)
-                for brother in brothers:
-                    nok = brother
-                    if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 2)
-                        visited.append(nok.house)
-            for child in person.children:
-                for grandchild in child.children:
-                    nok = grandchild
-                    if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 2)
-                        visited.append(nok.house)
-            # Third level
-            uncles = []
-            if person.father != None:
-                if person.father.father != None:
-                    uncles = list(set(person.father.father.children + person.father.mother.children))
-                    uncles.remove(person.father)
-                if person.mother.father != None:
-                    uncles.extend(list(set(person.mother.father.children + person.mother.mother.children)))
-                    uncles.remove(person.mother)
-                for uncle in uncles:
-                    nok = uncle
-                    if nok.dead == False and nok.house not in visited:
-                        person.careNetwork.add_edge(person, nok, distance = 3)
-                        visited.append(nok.house)
-                brothers = list(set(person.father.children + person.mother.children))
-                brothers.remove(person)
-                for brother in brothers:
-                    for child in brother.children:
-                        nok = child
+                # Second level
+                if person.father != None:
+                    if person.father.father != None:
+                        nok = person.father.father
+                        if nok.dead == False and nok.house not in visited:
+                            person.careNetwork.add_edge(person, nok, distance = 2)
+                            visited.append(nok.house)
+                        nok = person.father.mother
+                        if nok.dead == False and nok.house not in visited:
+                            person.careNetwork.add_edge(person, nok, distance = 2)
+                            visited.append(nok.house)
+                    if person.mother.father != None:
+                        nok = person.mother.father
+                        if nok.dead == False and nok.house not in visited:
+                            person.careNetwork.add_edge(person, nok, distance = 2)
+                            visited.append(nok.house)
+                        nok = person.mother.mother
+                        if nok.dead == False and nok.house not in visited:
+                            person.careNetwork.add_edge(person, nok, distance = 2)
+                            visited.append(nok.house)
+                    brothers = list(set(person.father.children + person.mother.children))
+                    brothers.remove(person)
+                    for brother in brothers:
+                        nok = brother
+                        if nok.dead == False and nok.house not in visited:
+                            person.careNetwork.add_edge(person, nok, distance = 2)
+                            visited.append(nok.house)
+                for child in person.children:
+                    for grandchild in child.children:
+                        nok = grandchild
+                        if nok.dead == False and nok.house not in visited:
+                            person.careNetwork.add_edge(person, nok, distance = 2)
+                            visited.append(nok.house)
+                # Third level
+                uncles = []
+                if person.father != None:
+                    if person.father.father != None:
+                        uncles = list(set(person.father.father.children + person.father.mother.children))
+                        uncles.remove(person.father)
+                    if person.mother.father != None:
+                        uncles.extend(list(set(person.mother.father.children + person.mother.mother.children)))
+                        uncles.remove(person.mother)
+                    for uncle in uncles:
+                        nok = uncle
                         if nok.dead == False and nok.house not in visited:
                             person.careNetwork.add_edge(person, nok, distance = 3)
                             visited.append(nok.house)
+                    brothers = list(set(person.father.children + person.mother.children))
+                    brothers.remove(person)
+                    for brother in brothers:
+                        for child in brother.children:
+                            nok = child
+                            if nok.dead == False and nok.house not in visited:
+                                person.careNetwork.add_edge(person, nok, distance = 3)
+                                visited.append(nok.house)
         
         for house in self.map.occupiedHouses:
             suppliers = house.careNetwork.successors(house)
