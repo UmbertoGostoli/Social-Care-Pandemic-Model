@@ -1,2 +1,3 @@
-combinationKey,lockdown
-0,TRUE
+combinationKey,lockdown,careLockdown
+0,TRUE,FALSE
+,,TRUE
