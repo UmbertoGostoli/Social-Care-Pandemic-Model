@@ -16,6 +16,7 @@ import time
 import datetime
 import multiprocessing
 from glob import glob
+import sys
 
 def meta_params():
     
@@ -151,8 +152,8 @@ def meta_params():
     
     m['sensitivityMode'] = True
     m['sensitivityOutputs'] = ['totalHospitalized']
-    m['sensitivityParameters'] = ['classContactBias', 'householdIsolationFactor', 'socialPreferenceFactor',
-                                  'workingFactorReduction', 'incomeBehaviourExp', 'riskBehaviourFactor', 'locationInteractionBeta']
+    m['sensitivityParameters'] = ['classContactBias', 'householdIsolationFactor', 'socialPreferenceFactor', 'incomeBehaviourExp', 
+                                    'riskBehaviourFactor', 'classInteractionBeta', 'locationInteractionBeta']
     # multiprocessing params
     m['multiprocessing'] = False
     m['numberProcessors'] = 10
@@ -395,7 +396,7 @@ def init_params():
     # Two betas
     p['betaCommunity'] = 0.018 # 0.02
     p['betaHousehold'] = 0.1 # 0.05
-    p['betaCare'] = 0.15 # 0.15
+    p['betaCare'] = 0.16 # 0.15
     p['contactDurationExp'] = 0.5
     # p['severityExp'] = 0.02
     # p['severityExpReduction'] = 1.0
@@ -454,7 +455,7 @@ def init_params():
     p['classInteractionExp'] = 2.0
     p['classInteractionBeta'] = 0.1 #
     p['locationInteractionExp'] = 2.0
-    p['locationInteractionBeta'] = 0.002 # 0.001
+    p['locationInteractionBeta'] = 0.001 # 0.001
     
     # Not used in current version
     # p['severityWeightsByAge'] = [1.0, 1.0, 1.0, 1.0, 3.0, 9.0, 25.0, 50.0, 70.0]
@@ -494,12 +495,14 @@ def init_params():
     
     p['lockdownEvent'] = 'death' # 'hospitalization' # 'intubation'
     p['lockdownPeriod'] = 3
-    p['daysFromEvent'] = 14  # Switch off the lockdown
+    p['daysFromEvent'] = 7  # Switch off the lockdown
     p['endLockdownIndicator'] = 'newCases'
     p['benchmarkIndicator'] = 'overMax'
     p['thresholdIndicator'] = 1.0/8.0
     
     p['lockdown'] = False
+    p['careLockdown'] = False
+    p['lockdownContactReductionRate'] = 0.5
     p['lockdownDuration'] = 90
     # Lockdown changes on social care
     p['betaReduction'] = 0.5
@@ -634,8 +637,8 @@ def loadPolicies(scenarios):
                 combinations = list(itertools.product(*policyList))
                 for c in combinations:
                     policyParams = policies[i][0].copy()
-                    for v in c:
-                        policyParams[parNames[c.index(v)]][0] = v
+                    for n in range(len(c)):
+                        policyParams[parNames[n]][0] = c[n] # c.index(c[n])
                     policyParams['policyIndex'][0] = index
                     index += 1
                     policies[i].append(policyParams)
@@ -808,6 +811,10 @@ if __name__ == "__main__":
             scenariosParams.append(z)
         
         policiesParams = loadPolicies(scenarios)
+        
+        print 'Policies params: ' + str(policiesParams)
+        
+        sys.exit()
         
         numberPolicies = len(policiesParams[0])
     

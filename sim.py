@@ -76,7 +76,27 @@ class Sim:
                         'over70Intubated', 
                         'lockdownState', 'q1_infected', 'q1_hospitalized', 'q1_intubated', 'q2_infected', 'q2_hospitalized', 'q2_intubated',
                         'q3_infected', 'q3_hospitalized', 'q3_intubated', 'q4_infected', 'q4_hospitalized', 'q4_intubated', 'q5_infected', 
-                        'q5_hospitalized', 'q5_intubated', 'totalHospitalized']
+                        'q5_hospitalized', 'q5_intubated', 'totalHospitalized', 'hospitalPopulation',
+                        'infectedByClass_0', 'infectedByClass_1', 'infectedByClass_2', 'infectedByClass_3', 'infectedByClass_4',
+                        'infectedByAge_0', 'infectedByAge_1', 'infectedByAge_2', 'infectedByAge_3', 'infectedByAge_4',
+                        'infectedByAge_5', 'infectedByAge_6', 'infectedByAge_7', 'infectedByAge_8',
+                        'hospitalizedByClass_0', 'hospitalizedByClass_1', 'hospitalizedByClass_2', 'hospitalizedByClass_3', 'hospitalizedByClass_4',
+                        'hospitalizedQuintilesRatio', 'hospitalizedByAge_0', 'hospitalizedByAge_1', 'hospitalizedByAge_2', 'hospitalizedByAge_3', 
+                        'hospitalizedByAge_4', 'hospitalizedByAge_5', 'hospitalizedByAge_6', 'hospitalizedByAge_7', 'hospitalizedByAge_8',
+                        'intubatedByClass_0', 'intubatedByClass_1', 'intubatedByClass_2', 'intubatedByClass_3', 'intubatedByClass_4',
+                        'intubatedQuintilesRatio', 'intubatedByAge_0', 'intubatedByAge_1', 'intubatedByAge_2', 'intubatedByAge_3', 'intubatedByAge_4',
+                        'intubatedByAge_5', 'intubatedByAge_6', 'intubatedByAge_7', 'intubatedByAge_8',
+                        'symptomaticByClass_0', 'symptomaticByClass_1', 'symptomaticByClass_2', 'symptomaticByClass_3', 'symptomaticByClass_4',
+                        'symptomaticByAge_0', 'symptomaticByAge_1', 'symptomaticByAge_2', 'symptomaticByAge_3', 'symptomaticByAge_4',
+                        'symptomaticByAge_5', 'symptomaticByAge_6', 'symptomaticByAge_7', 'symptomaticByAge_8',
+                        'deathsByClass_0', 'deathsByClass_1', 'deathsByClass_2', 'deathsByClass_3', 'deathsByClass_4',
+                        'deathsQuintilesRatio', 'deathsByAge_0', 'deathsByAge_1', 'deathsByAge_2', 'deathsByAge_3', 'deathsByAge_4',
+                        'deathsByAge_5', 'deathsByAge_6', 'deathsByAge_7', 'deathsByAge_8',
+                        'unmetSocialCareNeed_Q1', 'unmetSocialCareNeed_Q2', 'unmetSocialCareNeed_Q3', 'unmetSocialCareNeed_Q4', 
+                        'unmetSocialCareNeed_Q5', 'mostLeastDeprivedRatio', 'totalInformalSocialCare_Q1', 'totalInformalSocialCare_Q2', 
+                        'totalInformalSocialCare_Q3', 'totalInformalSocialCare_Q4', 'totalInformalSocialCare_Q5', 'totalSocialCareNeed_Q1', 
+                        'totalSocialCareNeed_Q2', 'totalSocialCareNeed_Q3', 'totalSocialCareNeed_Q4', 'totalSocialCareNeed_Q5', 
+                        'informalCareRatio', 'careNeedRatio']
         
         
         self.outputData = pd.DataFrame()
@@ -194,7 +214,13 @@ class Sim:
         self.intubatedByAge = [0]*int(self.p['ageClasses'])
         self.symptomaticByClass = [0]*int(self.p['incomeClasses'])
         self.symptomaticByAge = [0]*int(self.p['ageClasses'])
+        
         self.totalHospitalized = 0
+        self.hospitalPopulation = 0
+        
+        self.totalHospitalizedByClass = [0]*int(self.p['incomeClasses'])
+        self.totalIntubatedByClass = [0]*int(self.p['incomeClasses'])
+        self.totDeathsByClass = [0]*int(self.p['incomeClasses'])
         
         self.exposedPeriod = 0
         self.infectedNotHospitalizedPeriod = 0
@@ -610,6 +636,8 @@ class Sim:
        
         self.symptomsProgression(day)
         
+        print 'Hospitalized by class: ' + str(self.totalHospitalizedByClass)
+        
         #################################
         
         ## Social care process  ########
@@ -834,6 +862,8 @@ class Sim:
         
         print 'Probs deaths if intubated: ' + str(self.probsDeathIntubated)
         self.newExposed = 0
+        self.infectedByClass = [0]*int(self.p['incomeClasses'])
+        self.infectedByAge = [0]*int(self.p['ageClasses'])
         # self.newCases = 0
         ### Exogenous exposure: some agents are exposed from outside  ######
         exposedAgents = []
@@ -882,18 +912,13 @@ class Sim:
                             person.severityLevel = 2
                             person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                             person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                            self.symptomaticByClass[person.incomeQuintile] += 1
-                            self.symptomaticByAge[person.ageClass] += 1
                         else:
-                            self.totalHospitalized += 1
                             prob = self.probsIntensiveCare[person.ageClass][person.incomeQuintile][genderIndex]
                             if np.random.random() > prob: # self.p['probsIntensiveCare'][person.ageClass]:
                                 # In this case, agent is not in intensive care
                                 person.severityLevel = 3
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                 person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                                self.hospitalizedByClass[person.incomeQuintile] += 1
-                                self.hospitalizedByAge[person.ageClass] += 1
                             else:
                                 prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
                                 if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
@@ -901,16 +926,11 @@ class Sim:
                                     person.severityLevel = 4
                                     person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                     person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                                    self.intubatedByClass[person.incomeQuintile] += 1
-                                    self.intubatedByAge[person.ageClass] += 1
                                 else:
                                     # In this case, agent is dead
                                     person.severityLevel = 5
                                     person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                     person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                                    self.deathsByClass[person.incomeQuintile] += 1
-                                    self.deathsByAge[person.ageClass] += 1
-
 
         ##### Endogenous exposure: exposure from contagious agents in the population #######
         
@@ -963,18 +983,13 @@ class Sim:
                         person.severityLevel = 2
                         person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                         person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                        self.symptomaticByClass[person.incomeQuintile] += 1
-                        self.symptomaticByAge[person.ageClass] += 1
                     else:   ## In this case is hospitalized
-                        self.totalHospitalized += 1
                         prob = self.probsIntensiveCare[person.ageClass][person.incomeQuintile][genderIndex]
                         if np.random.random() > prob: # self.p['probsIntensiveCare'][person.ageClass]:
                             # In this case, agent is NOT in intensive care (i.e. just hospitalized)
                             person.severityLevel = 3
                             person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                             person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                            self.hospitalizedByClass[person.incomeQuintile] += 1
-                            self.hospitalizedByAge[person.ageClass] += 1
                         else:
                             prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
                             if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
@@ -982,15 +997,11 @@ class Sim:
                                 person.severityLevel = 4
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                 person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                                self.intubatedByClass[person.incomeQuintile] += 1
-                                self.intubatedByAge[person.ageClass] += 1
                             else:
                                 # In this case, agent is dead
                                 person.severityLevel = 5
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                 person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                                self.deathsByClass[person.incomeQuintile] += 1
-                                self.deathsByAge[person.ageClass] += 1
             
         newMild = [x for x in exposedAgents if x.symptomsLevel == 'mild']
         numMild = len(newMild)
@@ -1012,37 +1023,49 @@ class Sim:
             n += 1
             agentsToAssign.remove(mildAgent)
         
-        totInfected = sum(self.infectedByAge)
-        totDeaths = sum(self.deathsByAge)
-        totIntubated = sum(self.intubatedByAge)
-        totHospitalized = sum(self.hospitalizedByAge)
-        totMild = sum(self.symptomaticByAge)
-        totAsymptomatic = totInfected - (totMild+totHospitalized+totIntubated+totDeaths)
-        numConditions = [totAsymptomatic, totMild, totHospitalized, totIntubated, totDeaths]
+        # totInfected = sum(self.infectedByAge)
+#        totDeaths = sum(self.deathsByAge)
+#        totIntubated = sum(self.intubatedByAge)
+#        totHospitalized = sum(self.hospitalizedByAge)
+#        totMild = sum(self.symptomaticByAge)
+#        totAsymptomatic = sum(self.infectedByAge) - (totMild+totHospitalized+totIntubated+totDeaths)
+#        numConditions = [totAsymptomatic, totMild, totHospitalized, totIntubated, totDeaths]
         
         for person in self.pop.livingPeople:
             # Clean daily contacts
             person.nokCareContacts = []
             person.dailyContacts = []
         
-        self.shareConditions = [float(x)/float(sum(numConditions)) for x in numConditions]
+        # self.shareConditions = [float(x)/float(sum(numConditions)) for x in numConditions]
         
         print 'New exposed: ' + str(self.newExposed)
           
-        print 'Share conditions: ' + str(self.shareConditions)
-        print 'Infected by age: ' + str(self.infectedByAge)
-        print 'Infected by class: ' + str(self.infectedByClass)
-        print 'Deaths by age: ' + str(self.deathsByAge)
-        print 'Deaths by class: ' + str(self.deathsByClass)
-        print 'Intubated by age: ' + str(self.intubatedByAge)
-        print 'Intubated by class: ' + str(self.intubatedByClass)
-        print 'Hospitalized by age: ' + str(self.hospitalizedByAge)
-        print 'Hospitalized by class: ' + str(self.hospitalizedByClass)
-        print 'Mild by age: ' + str(self.symptomaticByAge)
-        print 'Mild by class: ' + str(self.symptomaticByClass)
-        print ''
+#        print 'Share conditions: ' + str(self.shareConditions)
+#        print 'Infected by age: ' + str(self.infectedByAge)
+#        print 'Infected by class: ' + str(self.infectedByClass)
+#        print 'Deaths by age: ' + str(self.deathsByAge)
+#        print 'Deaths by class: ' + str(self.deathsByClass)
+#        print 'Intubated by age: ' + str(self.intubatedByAge)
+#        print 'Intubated by class: ' + str(self.intubatedByClass)
+#        print 'Hospitalized by age: ' + str(self.hospitalizedByAge)
+#        print 'Hospitalized by class: ' + str(self.hospitalizedByClass)
+#        print 'Mild by age: ' + str(self.symptomaticByAge)
+#        print 'Mild by class: ' + str(self.symptomaticByClass)
+#        print ''
         
     def symptomsProgression(self, day):
+        
+        # Reset variables
+        self.totalHospitalized = 0
+        self.deathsByClass = [0]*int(self.p['incomeClasses'])
+        self.deathsByAge = [0]*int(self.p['ageClasses'])
+        self.hospitalizedByClass = [0]*int(self.p['incomeClasses'])
+        self.hospitalizedByAge = [0]*int(self.p['ageClasses'])
+        self.intubatedByClass = [0]*int(self.p['incomeClasses'])
+        self.intubatedByAge = [0]*int(self.p['ageClasses'])
+        self.symptomaticByClass = [0]*int(self.p['incomeClasses'])
+        self.symptomaticByAge = [0]*int(self.p['ageClasses'])
+        
         prePop = len(self.pop.livingPeople)
         susceptibles = [x for x in self.pop.livingPeople if x.healthStatus == 'susceptible'] 
         # notHospitalized = [x for x in self.pop.livingPeople if x.haveBeenHospitalized == False]
@@ -1069,8 +1092,18 @@ class Sim:
                 agent.symptomatic = True
                 if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
                     self.newCases += 1
+                    self.totalHospitalized += 1
+                    self.hospitalPopulation += 1
                     if self.periodFirstHospitalized == -1:
                         self.periodFirstHospitalized = day
+                    if agent.symptomsLevel == 'severe':
+                        self.hospitalizedByClass[agent.incomeQuintile] += 1
+                        self.totalHospitalizedByClass[agent.incomeQuintile] += 1
+                        self.hospitalizedByAge[agent.ageClass] += 1
+                    else:
+                        self.intubatedByClass[agent.incomeQuintile] += 1
+                        self.totalIntubatedByClass[agent.incomeQuintile] += 1
+                        self.intubatedByAge[agent.ageClass] += 1
                     agent.hospitalized = True
                     agent.haveBeenHospitalized = True
                     agent.workingShare = 0.0
@@ -1078,8 +1111,15 @@ class Sim:
                         if self.periodFirstIntubated == -1:
                             self.periodFirstIntubated = day
                         agent.inIntensiveCare = True
+                else:
+                    self.symptomaticByClass[agent.incomeQuintile] += 1
+                    self.symptomaticByAge[agent.ageClass] += 1
             elif agent.daysFromInfection == (agent.recoveryPeriod+agent.incubationPeriod):
+                self.hospitalPopulation -= 1
                 if agent.symptomsLevel == 'dead':
+                    self.deathsByClass[agent.incomeQuintile] += 1
+                    self.totDeathsByClass[agent.incomeQuintile] += 1
+                    self.deathsByAge[agent.ageClass] += 1
                     if self.periodFirstDeath == -1:
                         self.periodFirstDeath = day
                     agent.dead = True
@@ -1102,6 +1142,16 @@ class Sim:
                     agent.mildConditionIndex = 0
                     agent.viralLoad = 0
                 noMoreInfectious += 1
+        
+        totDeaths = sum(self.deathsByAge)
+        totIntubated = sum(self.intubatedByAge)
+        totHospitalized = sum(self.hospitalizedByAge)
+        totMild = sum(self.symptomaticByAge)
+        totAsymptomatic = sum(self.infectedByAge) - (totMild+totHospitalized+totIntubated+totDeaths)
+        numConditions = [totAsymptomatic, totMild, totHospitalized, totIntubated, totDeaths]
+        self.shareConditions = [0, 0, 0, 0, 0]
+        if sum(numConditions) > 0:
+            self.shareConditions = [float(x)/float(sum(numConditions)) for x in numConditions]
         
         # Testing process
         noTestMildAgents = [x for x in infected if x.symptomatic == True and x.symptomsLevel == 'mild' and x.testPositive == False]
@@ -7123,6 +7173,9 @@ class Sim:
         totalFormalSocialCare = sum([x.formalSocialCareReceived for x in self.pop.livingPeople])
         totalSocialCare = totalInformalSocialCare + totalFormalSocialCare
         totalUnmetSocialCareNeed = sum([x.unmetSocialCareNeed for x in self.pop.livingPeople])
+        
+        
+        
         share_InformalSocialCare = 0
         if totalSocialCare > 0:
             share_InformalSocialCare = totalInformalSocialCare/totalSocialCare
@@ -7191,6 +7244,48 @@ class Sim:
         q3_agents = [x for x in self.pop.livingPeople if x.incomeQuintile == 2]
         q4_agents = [x for x in self.pop.livingPeople if x.incomeQuintile == 3]
         q5_agents = [x for x in self.pop.livingPeople if x.incomeQuintile == 4]
+        
+        unmetSocialCareNeed_Q1 = sum([x.unmetSocialCareNeed for x in q1_agents])
+        unmetSocialCareNeed_Q2 = sum([x.unmetSocialCareNeed for x in q2_agents])
+        unmetSocialCareNeed_Q3 = sum([x.unmetSocialCareNeed for x in q3_agents])
+        unmetSocialCareNeed_Q4 = sum([x.unmetSocialCareNeed for x in q4_agents])
+        unmetSocialCareNeed_Q5 = sum([x.unmetSocialCareNeed for x in q5_agents])
+        
+        mostLeastDeprivedRatio = 0
+        if unmetSocialCareNeed_Q5 > 0:
+            mostLeastDeprivedRatio = unmetSocialCareNeed_Q1/unmetSocialCareNeed_Q5
+            
+        totalInformalSocialCare_Q1 = sum([x.informalSocialCareReceived for x in q1_agents])
+        totalInformalSocialCare_Q2 = sum([x.informalSocialCareReceived for x in q2_agents])
+        totalInformalSocialCare_Q3 = sum([x.informalSocialCareReceived for x in q3_agents])
+        totalInformalSocialCare_Q4 = sum([x.informalSocialCareReceived for x in q4_agents])
+        totalInformalSocialCare_Q5 = sum([x.informalSocialCareReceived for x in q5_agents])
+        
+        informalCareRatio = 0
+        if totalInformalSocialCare_Q5 > 0:
+            informalCareRatio = totalInformalSocialCare_Q1/totalInformalSocialCare_Q5
+        
+        totalSocialCareNeed_Q1 = sum([x.hoursSocialCareDemand for x in q1_agents])
+        totalSocialCareNeed_Q2 = sum([x.hoursSocialCareDemand for x in q2_agents])
+        totalSocialCareNeed_Q3 = sum([x.hoursSocialCareDemand for x in q3_agents])
+        totalSocialCareNeed_Q4 = sum([x.hoursSocialCareDemand for x in q4_agents])
+        totalSocialCareNeed_Q5 = sum([x.hoursSocialCareDemand for x in q5_agents])
+        
+        careNeedRatio = 0
+        if totalSocialCareNeed_Q5 > 0:
+            careNeedRatio = totalSocialCareNeed_Q1/totalSocialCareNeed_Q5
+            
+        hospitalizedQuintilesRatio = 0
+        if self.totalHospitalizedByClass[4] > 0:
+            hospitalizedQuintilesRatio = float(self.totalHospitalizedByClass[0])/float(self.totalHospitalizedByClass[4])
+            
+        intubatedQuintilesRatio = 0
+        if self.totalIntubatedByClass[4] > 0:
+            intubatedQuintilesRatio = float(self.totalIntubatedByClass[0])/float(self.totalIntubatedByClass[4])
+        
+        deathsQuintilesRatio = 0
+        if self.totDeathsByClass[4] > 0:
+            deathsQuintilesRatio = float(self.totDeathsByClass[0])/float(self.totDeathsByClass[4])
         
         q1_infected = len([x for x in q1_agents if x.healthStatus == 'infectious'])
         q2_infected = len([x for x in q2_agents if x.healthStatus == 'infectious'])
@@ -7363,8 +7458,26 @@ class Sim:
                    self.totalDeaths, self.hospitalized, self.intubated, self.deathsForCovid, self.asymptomatic, self.mildSymptomatic,
                    self.newCases, self.newExposed, self.over70Hospitalized, self.over70Intubated, self.lockdown, q1_infected, q1_hospitalized, q1_intubated,
                    q2_infected, q2_hospitalized, q2_intubated, q3_infected, q3_hospitalized, q3_intubated, q4_infected, q4_hospitalized, q4_intubated,
-                   q5_infected, q5_hospitalized, q5_intubated, self.totalHospitalized]
-        
+                   q5_infected, q5_hospitalized, q5_intubated, self.totalHospitalized, self.hospitalPopulation,
+                   self.infectedByClass[0], self.infectedByClass[1], self.infectedByClass[2], self.infectedByClass[3], self.infectedByClass[4],
+                   self.infectedByAge[0], self.infectedByAge[1], self.infectedByAge[2], self.infectedByAge[3], self.infectedByAge[4],
+                   self.infectedByAge[5], self.infectedByAge[6], self.infectedByAge[7], self.infectedByAge[8],
+                   self.hospitalizedByClass[0], self.hospitalizedByClass[1], self.hospitalizedByClass[2], self.hospitalizedByClass[3], self.hospitalizedByClass[4],
+                   hospitalizedQuintilesRatio, self.hospitalizedByAge[0], self.hospitalizedByAge[1], self.hospitalizedByAge[2], self.hospitalizedByAge[3], 
+                   self.hospitalizedByAge[4], self.hospitalizedByAge[5], self.hospitalizedByAge[6], self.hospitalizedByAge[7], self.hospitalizedByAge[8],
+                   self.intubatedByClass[0], self.intubatedByClass[1], self.intubatedByClass[2], self.intubatedByClass[3], self.intubatedByClass[4],
+                   intubatedQuintilesRatio, self.intubatedByAge[0], self.intubatedByAge[1], self.intubatedByAge[2], self.intubatedByAge[3], self.intubatedByAge[4],
+                   self.intubatedByAge[5], self.intubatedByAge[6], self.intubatedByAge[7], self.intubatedByAge[8],
+                   self.symptomaticByClass[0], self.symptomaticByClass[1], self.symptomaticByClass[2], self.symptomaticByClass[3], self.symptomaticByClass[4],
+                   self.symptomaticByAge[0], self.symptomaticByAge[1], self.symptomaticByAge[2], self.symptomaticByAge[3], self.symptomaticByAge[4],
+                   self.symptomaticByAge[5], self.symptomaticByAge[6], self.symptomaticByAge[7], self.symptomaticByAge[8],
+                   self.deathsByClass[0], self.deathsByClass[1], self.deathsByClass[2], self.deathsByClass[3], self.deathsByClass[4], deathsQuintilesRatio,
+                   self.deathsByAge[0], self.deathsByAge[1], self.deathsByAge[2], self.deathsByAge[3], self.deathsByAge[4],
+                   self.deathsByAge[5], self.deathsByAge[6], self.deathsByAge[7], self.deathsByAge[8], 
+                   unmetSocialCareNeed_Q1, unmetSocialCareNeed_Q2, unmetSocialCareNeed_Q3, unmetSocialCareNeed_Q4, unmetSocialCareNeed_Q5, mostLeastDeprivedRatio,
+                   totalInformalSocialCare_Q1, totalInformalSocialCare_Q2, totalInformalSocialCare_Q3, totalInformalSocialCare_Q4, totalInformalSocialCare_Q5,
+                   totalSocialCareNeed_Q1, totalSocialCareNeed_Q2, totalSocialCareNeed_Q3, totalSocialCareNeed_Q4, totalSocialCareNeed_Q5,
+                   informalCareRatio, careNeedRatio]
         
         dataMapFile = 'DataMap_' + str(self.year) + '.csv'
         if not os.path.exists(dataMapFolder):
