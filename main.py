@@ -812,10 +812,6 @@ if __name__ == "__main__":
         
         policiesParams = loadPolicies(scenarios)
         
-        print 'Policies params: ' + str(policiesParams)
-        
-        sys.exit()
-        
         numberPolicies = len(policiesParams[0])
     
     # Add graph parameters to graphsParam.csvs file
