@@ -76,7 +76,7 @@ class Sim:
                         'over70Intubated', 
                         'lockdownState', 'q1_infected', 'q1_hospitalized', 'q1_intubated', 'q2_infected', 'q2_hospitalized', 'q2_intubated',
                         'q3_infected', 'q3_hospitalized', 'q3_intubated', 'q4_infected', 'q4_hospitalized', 'q4_intubated', 'q5_infected', 
-                        'q5_hospitalized', 'q5_intubated', 'totalHospitalized', 'hospitalPopulation',
+                        'q5_hospitalized', 'q5_intubated', 'totalHospitalized', 'cumulatedHospitalizations', 'hospitalPopulation',
                         'infectedByClass_0', 'infectedByClass_1', 'infectedByClass_2', 'infectedByClass_3', 'infectedByClass_4',
                         'infectedByAge_0', 'infectedByAge_1', 'infectedByAge_2', 'infectedByAge_3', 'infectedByAge_4',
                         'infectedByAge_5', 'infectedByAge_6', 'infectedByAge_7', 'infectedByAge_8',
@@ -216,6 +216,7 @@ class Sim:
         self.symptomaticByAge = [0]*int(self.p['ageClasses'])
         
         self.totalHospitalized = 0
+        self.cumulatedHospitalizations = 0
         self.hospitalPopulation = 0
         
         self.totalHospitalizedByClass = [0]*int(self.p['incomeClasses'])
@@ -412,8 +413,10 @@ class Sim:
                     # Save simulation
                     pickle.dump(self.pop, open(policyFolder + '/save.p', 'wb'))
                     pickle.dump(self.map, open(policyFolder + '/save.m', 'wb'))
-                    
+                    pickle.dump(self.infectionFatalityRatio, open(policyFolder + '/save.if', 'wb'))
+                    pickle.dump(self.newCasesRatios, open(policyFolder + '/save.nr', 'wb'))
                     pickle.dump(self.maxNewCases, open(policyFolder + '/save.n', 'wb'))
+                    pickle.dump(self.classContactsMatrix, open(policyFolder + '/save.cm', 'wb'))
                     pickle.dump(self.totalDeaths, open(policyFolder + '/save.d', 'wb'))
                     pickle.dump(self.lockdownDay, open(policyFolder + '/save.l', 'wb'))
                 
@@ -422,8 +425,10 @@ class Sim:
                 
                 self.pop = pickle.load(open(self.folder + '/Policy_0/save.p', 'rb'))
                 self.map = pickle.load(open(self.folder + '/Policy_0/save.m', 'rb'))
-                
+                self.infectionFatalityRatio = pickle.load(open(self.folder + '/Policy_0/save.if', 'rb'))
+                self.newCasesRatios = pickle.load(open(self.folder + '/Policy_0/save.nr', 'rb'))
                 self.maxNewCases = pickle.load(open(self.folder + '/Policy_0/save.n', 'rb'))
+                self.classContactsMatrix = pickle.load(open(self.folder + '/Policy_0/save.cm', 'rb'))
                 self.totalDeaths = pickle.load(open(self.folder + '/Policy_0/save.d', 'rb'))
                 self.lockdownDay = pickle.load(open(self.folder + '/Policy_0/save.l', 'rb'))
                 self.from_IDs_to_Agents()
@@ -633,6 +638,8 @@ class Sim:
         print 'Day ' + str(day)
         
         ### Pandemic process  #########
+        
+        print 'Doing symptomsProgression...'
        
         self.symptomsProgression(day)
         
@@ -670,23 +677,37 @@ class Sim:
         
         ### Pandemic process  #########
         
+        print 'Doing mobilityRates function...'
+        
         self.mobilityRates()
+        
+        print 'Doing domesticInteraction function...'
         
         self.domesticInteraction()
         
+        print 'Doing socialInteraction function...'
+        
         self.socialInteraction()
         
+        print 'Doing socialInteraction....'
+        
         self.exposureProcess(day)
+        
+        print 'Doing exposureProcess...'
         
         ################################
         
         self.doStats(day, policyFolder, dataMapFolder, dataHouseholdFolder)
+        
+        print 'Doing stats....'
         
     def mobilityRates(self):
 
         newCasesRatio = float(self.newCases)/float(len(self.pop.livingPeople))
         self.newCasesRatios.append(newCasesRatio)
         print 'Ratio: ' + str(newCasesRatio)
+        
+        print 'Infection-fatality rates: ' + str(self.infectionFatalityRatio)
         
         for person in self.pop.livingPeople:
             
@@ -731,6 +752,9 @@ class Sim:
                     
                 newCasesDiscounted = 0
                 den = 0
+                
+                print 'Cases ratio: ' + str(self.newCasesRatios)
+                
                 for i in range(len(self.newCasesRatios)):
                     newCasesDiscounted += self.newCasesRatios[i]*np.power(self.p['timeDiscountingFactor'], i)
                     den += np.power(self.p['timeDiscountingFactor'], i)
@@ -1093,6 +1117,7 @@ class Sim:
                 if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
                     self.newCases += 1
                     self.totalHospitalized += 1
+                    self.cumulatedHospitalizations += 1
                     self.hospitalPopulation += 1
                     if self.periodFirstHospitalized == -1:
                         self.periodFirstHospitalized = day
@@ -1481,12 +1506,14 @@ class Sim:
         else:
             ageClasses = int(self.p['interactionAgeClasses'])
             contactsByAge = self.contacts
+            
         self.classContactsMatrix = []
         # Introducing contact increment to increase contacts in older people ##
         contactIncrement = self.p['contactCompoundFactor']
         for i in range(ageClasses):
             contactsByClass = []
             ageGroupContacts = []
+            # For each age group, the total contacts with all the other age groups
             totalContacts = sum(contactsByAge[i])*contactIncrement
             a = 0
             for i in range(int(self.p['incomeClasses'])):
@@ -1494,9 +1521,10 @@ class Sim:
             lowClassContacts = totalContacts/a
             for j in range(int(self.p['incomeClasses'])):
                 classContacts = lowClassContacts*math.pow(contactBias, j)
+                # For each income quintile, the max size of social network
                 contactsByClass.append(max(np.random.poisson(math.ceil(classContacts), 1000)))
             
-            # Introducing contact increment to increase contacts in older people ##
+            # An age-age contact matrix is created for each income quintile.
             for j in range(ageClasses):
                 classContacts = []
                 lowClassContacts = contactsByAge[i][j]/a
@@ -7458,7 +7486,7 @@ class Sim:
                    self.totalDeaths, self.hospitalized, self.intubated, self.deathsForCovid, self.asymptomatic, self.mildSymptomatic,
                    self.newCases, self.newExposed, self.over70Hospitalized, self.over70Intubated, self.lockdown, q1_infected, q1_hospitalized, q1_intubated,
                    q2_infected, q2_hospitalized, q2_intubated, q3_infected, q3_hospitalized, q3_intubated, q4_infected, q4_hospitalized, q4_intubated,
-                   q5_infected, q5_hospitalized, q5_intubated, self.totalHospitalized, self.hospitalPopulation,
+                   q5_infected, q5_hospitalized, q5_intubated, self.totalHospitalized, self.cumulatedHospitalizations, self.hospitalPopulation,
                    self.infectedByClass[0], self.infectedByClass[1], self.infectedByClass[2], self.infectedByClass[3], self.infectedByClass[4],
                    self.infectedByAge[0], self.infectedByAge[1], self.infectedByAge[2], self.infectedByAge[3], self.infectedByAge[4],
                    self.infectedByAge[5], self.infectedByAge[6], self.infectedByAge[7], self.infectedByAge[8],

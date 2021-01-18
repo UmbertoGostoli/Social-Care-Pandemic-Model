@@ -151,7 +151,7 @@ def meta_params():
     m['socialCareProvision'] = True
     
     m['sensitivityMode'] = True
-    m['sensitivityOutputs'] = ['totalHospitalized']
+    m['sensitivityOutputs'] = ['cumulatedHospitalizations']
     m['sensitivityParameters'] = ['classContactBias', 'householdIsolationFactor', 'socialPreferenceFactor', 'incomeBehaviourExp', 
                                     'riskBehaviourFactor', 'classInteractionBeta', 'locationInteractionBeta']
     # multiprocessing params
