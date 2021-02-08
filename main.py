@@ -38,7 +38,7 @@ def meta_params():
     m['favouriteSeed'] = int(time.time())
     m['loadFromFile'] = False
     m['saveSim'] = True
-    m['loadSim'] = True
+    m['loadSim'] = False
     
     m['numberClasses'] = 5
     m['numCareLevels'] = 5
