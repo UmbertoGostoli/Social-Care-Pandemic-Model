@@ -26,7 +26,7 @@ def meta_params():
     m['initialPop'] = 600
     m['startYear'] = 1860
     m['endYear'] = 2020
-    m['pandemicPeriod'] = 180 # Short pandemic period to debug    # 180 
+    m['pandemicPeriod'] = 180 # 180 # Short pandemic period to debug    # 180 
     m['thePresent'] = 2012
     m['statsCollectFrom'] = 1960
     m['policyStartDay'] = 0 # 14
@@ -37,6 +37,9 @@ def meta_params():
     m['singleRunGraphs'] = False
     m['favouriteSeed'] = int(time.time())
     m['loadFromFile'] = False
+    m['saveSim'] = True
+    m['loadSim'] = True
+    
     m['numberClasses'] = 5
     m['numCareLevels'] = 5
     m['timeDiscountingRate'] = 0.035
@@ -394,9 +397,10 @@ def init_params():
     ### Sensitivity parameters ###
     p['beta'] = 0.5
     # Two betas
-    p['betaCommunity'] = 0.018 # 0.02
-    p['betaHousehold'] = 0.1 # 0.05
-    p['betaCare'] = 0.16 # 0.15
+    p['betaCommunity'] = 0.025 # 0.02
+    p['betaRandom'] = 0.5
+    p['betaHousehold'] = 0.2 # 0.2
+    p['betaCare'] = 0.2 # 0.2
     p['contactDurationExp'] = 0.5
     # p['severityExp'] = 0.02
     # p['severityExpReduction'] = 1.0
@@ -418,6 +422,7 @@ def init_params():
     # Parameters for new version of I determination
     # p['mildSymptomThreshold'] = 0.7
     p['householdIsolationFactor'] = 0.5
+    p['householdInfectionExp'] = 0.5
     p['mildMobilityExp'] = 1.0
     
     p['5yearAgeClasses'] = True
@@ -431,7 +436,8 @@ def init_params():
     p['infectionFatalityByAge'] = [0.0, 0.01, 0.01, 0.02, 0.03, 0.04, 0.06, 0.10, 0.16, 0.24, 0.38, 0.60, 0.94, 1.47, 2.31, 3.61, 5.66, 8.86, 17.37]
     p['numberOfContacts'] = [10, 15, 20, 20, 20, 18, 10, 7, 7]
     p['infectionWeightsByAge'] = [1.0, 1.0, 2.0, 4.0, 4.0, 5.0, 6.0, 7.0, 7.0]
-    p['contactCompoundFactor'] = 1.2 # 1.2
+    p['contactCompoundFactor'] = 3 # 1.2
+    p['dailyContactsShare'] = 0.32
     # p['over50CompoundFactor'] = 1.0 # 1.2
     # p['below50CompoundFactor'] = 1.0 # 1.1
     
@@ -443,23 +449,30 @@ def init_params():
     
     # Not used in current version
     # p['ageRiskFactor'] = 0.05
-    p['socialPreferenceFactor'] = 0.5
-    p['behaviouralResponseFactor'] = 50.0 # 50
-    p['timeDiscountingFactor'] = 0.8
+    p['socialPreferenceFactor'] = 0.01 # 0.5
+    p['behaviouralResponseFactor'] = 1000.0 # 10000.0
+    p['timeDiscountingFactor'] = 0.7
     p['workingFactorReduction'] = [0.2, 0.2, 0.25, 0.35, 0.5]
-    p['incomeBehaviourExp'] = 0.5 # 0.2
-    p['riskBehaviourFactor'] = 1.0 # 1.0
+    p['incomeBehaviourExp'] = 0.2 # 0.5
+    p['riskBehaviourFactor'] = 100.0 # 1.0
     p['probTestExp'] = 2.0
     
     # Social interaction parameters
-    p['classInteractionExp'] = 2.0
-    p['classInteractionBeta'] = 0.1 #
-    p['locationInteractionExp'] = 2.0
-    p['locationInteractionBeta'] = 0.001 # 0.001
+    p['sameTownWeight'] = 200.0
+    p['randomContactsShare'] = 0.0 # 1.0
+    p['fractionSWcontacts'] = 0.05
+    p['friendsInteractionExp'] = 1.2
+    p['friendsInteractionBeta'] = 0.25 #
+    p['classInteractionExp'] = 2.0 # 2.0
+    p['classInteractionBeta'] = 0.2 # 0.1
+    p['locationInteractionExp'] = 2.0 # 2.0
+    p['locationInteractionBeta'] = 0.002 # 0.001
+    p['townInteractionExp'] = 2.0 # 2.0
+    p['townInteractionBeta'] = 0.05 # 0.001
     
     # Not used in current version
     # p['severityWeightsByAge'] = [1.0, 1.0, 1.0, 1.0, 3.0, 9.0, 25.0, 50.0, 70.0]
-    p['severityClassBias'] = 0.9
+    p['severityClassBias'] = 0.95 # 0.9
     p['severityGenderBias'] = 0.7
     
     p['viralLoadWeight'] = 0.5
@@ -487,7 +500,7 @@ def init_params():
     p['probSymptomatic'] = [0.48, 0.57, 0.64, 0.69, 0.73, 0.77, 0.80, 0.83, 0.85]
     p['probsHospitalization'] = [0.005, 0.02, 0.06, 0.18, 0.28, 0.36, 0.42, 0.46, 0.49] # [0.005, 0.02, 0.06, 0.18, 0.26, 0.33, 0.39, 0.44, 0.48]
     p['probsIntensiveCare'] = [0.003, 0.01, 0.02, 0.04, 0.08, 0.16, 0.24, 0.36, 0.62] # [0.005, 0.01, 0.015, 0.025, 0.06, 0.09, 0.18, 0.34, 0.58]
-    p['infectionFatalityRatio'] = [0.00006, 0.0012, 0.009, 0.06, 0.22, 0.7, 1.4, 2.8, 8.1] # [0.002, 0.006, 0.03, 0.08, 0.15, 0.6, 2.2, 5.1, 9.3]
+    p['infectionFatalityRatio'] = [0.00006, 0.0012, 0.01, 0.07, 0.25, 0.7, 2.5, 4.0, 9.0] # [0.002, 0.006, 0.03, 0.08, 0.15, 0.6, 2.2, 5.1, 9.3]
     p['classWeightParam'] = 0.1
     
     
@@ -711,7 +724,8 @@ def multiprocessingSim(params):
     s = Sim(params[0]['scenarioIndex'], params[0], folderRun)
     
     print''
-    print params[1]['policyIndex']
+    print 'Policy index: ' + str(params[1]['policyIndex'])
+    print 'Policy params: ' + str(params[1])
     print''
     
     s.run(params[1]['policyIndex'], params[1], params[1]['randomSeed'])
@@ -740,7 +754,7 @@ if __name__ == "__main__":
         graphsDummy.to_csv("graphsParams.csv", index=False)
         
     
-    parametersFromFiles = True
+    parametersFromFiles = False
     
     scenariosParams = []
     policiesParams = [[[]]]

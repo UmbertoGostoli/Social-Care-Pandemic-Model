@@ -45,6 +45,7 @@ class Person:
         self.gdw = 0
         self.numContacts = 0
         self.domesticRiskFactor = 0
+        self.randomRiskFactor = 0
         self.communalRiskFactor = 0
         self.careRiskFactor = 0
         self.contagiousnessIndex = 0
@@ -53,12 +54,17 @@ class Person:
         self.contactReductionRate = 1.0
         self.testPositive = False
         self.dailyContacts = []
+        self.randomContacts = []
+        self.numContacts = 0
+        self.networkContacts = 0
+        self.numRandomContacts = 0
         self.socialContacts = nx.DiGraph()
         self.kinshipContacts = nx.DiGraph()
         self.socialContacIDs = []
         self.contactWeights = []
         self.genderWeight = 1.0
         self.nokCareContacts = []
+        self.totalContacts = 0
         
         self.children = []
         self.childrenID = [] # For pickle
@@ -104,6 +110,9 @@ class Person:
         else:
             self.sex = sex
         self.house = house
+        self.currentTown = None
+        if self.house != None:
+            self.currentTown = house.town
         self.houseID = -1 # For pickle
         self.sec = sec
         
