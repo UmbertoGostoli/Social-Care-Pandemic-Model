@@ -38,7 +38,7 @@ def meta_params():
     m['favouriteSeed'] = int(time.time())
     m['loadFromFile'] = False
     m['saveSim'] = True
-    m['loadSim'] = False
+    m['loadSim'] = True
     
     m['numberClasses'] = 5
     m['numCareLevels'] = 5
@@ -397,7 +397,7 @@ def init_params():
     ### Sensitivity parameters ###
     p['beta'] = 0.5
     # Two betas
-    p['betaCommunity'] = 0.025 # 0.02
+    p['betaCommunity'] = 0.02 # 0.02
     p['betaRandom'] = 0.5
     p['betaHousehold'] = 0.2 # 0.2
     p['betaCare'] = 0.2 # 0.2
@@ -437,7 +437,7 @@ def init_params():
     p['numberOfContacts'] = [10, 15, 20, 20, 20, 18, 10, 7, 7]
     p['infectionWeightsByAge'] = [1.0, 1.0, 2.0, 4.0, 4.0, 5.0, 6.0, 7.0, 7.0]
     p['contactCompoundFactor'] = 3 # 1.2
-    p['dailyContactsShare'] = 0.32
+    p['dailyContactsShare'] = 0.33
     # p['over50CompoundFactor'] = 1.0 # 1.2
     # p['below50CompoundFactor'] = 1.0 # 1.1
     
@@ -450,7 +450,7 @@ def init_params():
     # Not used in current version
     # p['ageRiskFactor'] = 0.05
     p['socialPreferenceFactor'] = 0.01 # 0.5
-    p['behaviouralResponseFactor'] = 1000.0 # 10000.0
+    p['behaviouralResponseFactor'] = 400.0 # 1000.0
     p['timeDiscountingFactor'] = 0.7
     p['workingFactorReduction'] = [0.2, 0.2, 0.25, 0.35, 0.5]
     p['incomeBehaviourExp'] = 0.2 # 0.5
@@ -477,8 +477,9 @@ def init_params():
     
     p['viralLoadWeight'] = 0.5
     # p['maleSeverityWeight'] = 1.5
-    p['incomeSeverityWeight'] = 2.0
-    p['ageSeverityWeight'] = 4.0
+    p['incomeSeverityWeight'] = 0.5 # 2.0
+    p['ageSeverityWeight'] = 2.0
+    p['mildConditionBeta'] = 0.5
     
     p['incomeClasses'] = 5
     
@@ -500,7 +501,7 @@ def init_params():
     p['probSymptomatic'] = [0.48, 0.57, 0.64, 0.69, 0.73, 0.77, 0.80, 0.83, 0.85]
     p['probsHospitalization'] = [0.005, 0.02, 0.06, 0.18, 0.28, 0.36, 0.42, 0.46, 0.49] # [0.005, 0.02, 0.06, 0.18, 0.26, 0.33, 0.39, 0.44, 0.48]
     p['probsIntensiveCare'] = [0.003, 0.01, 0.02, 0.04, 0.08, 0.16, 0.24, 0.36, 0.62] # [0.005, 0.01, 0.015, 0.025, 0.06, 0.09, 0.18, 0.34, 0.58]
-    p['infectionFatalityRatio'] = [0.00006, 0.0012, 0.01, 0.07, 0.25, 0.7, 2.5, 4.0, 9.0] # [0.002, 0.006, 0.03, 0.08, 0.15, 0.6, 2.2, 5.1, 9.3]
+    p['infectionFatalityRatio'] = [0.00006, 0.0012, 0.01, 0.075, 0.29, 0.87, 1.9, 4.0, 9.0] # [0.002, 0.006, 0.03, 0.08, 0.15, 0.6, 2.2, 5.1, 9.3]
     p['classWeightParam'] = 0.1
     
     

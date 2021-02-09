@@ -1553,9 +1553,15 @@ class Sim:
         n = 0
         while len(agentsToAssign) > 0:
             loadFactors = [math.pow(x.viralLoad, self.p['viralLoadWeight']) for x in agentsToAssign]
-            ageFactors = [math.pow((person.ageClass+1), self.p['ageSeverityWeight']) for x in agentsToAssign]
-            classFactors = [1.0/math.pow((person.incomeQuintile+1), self.p['incomeSeverityWeight']) for x in agentsToAssign]
-            genderFactors = [x.genderWeight for x in agentsToAssign]
+            ageFactors = [math.pow((x.ageClass+1), self.p['ageSeverityWeight']) for x in agentsToAssign]
+            classFactors = [1.0/math.pow((x.incomeQuintile+1), self.p['incomeSeverityWeight']) for x in agentsToAssign]
+            genderFactors = []
+            for agent in agentsToAssign:
+                if agent.sex == 'male':
+                    genderFactors.append(1.0)
+                else:
+                    genderFactors.append(self.p['severityGenderBias'])
+            # genderFactors = [x.genderWeight for x in agentsToAssign]
             weights = [a*b*c*d for a, b, c, d in zip(loadFactors, ageFactors, classFactors, genderFactors)]
             probs = [x/sum(weights) for x in weights]
             mildAgent = np.random.choice(agentsToAssign, p=probs)
