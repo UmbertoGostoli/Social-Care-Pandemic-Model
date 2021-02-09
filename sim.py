@@ -426,12 +426,12 @@ class Sim:
                         pickle.dump(self.map, open('save.m', 'wb'))
 #                        self.outputData = pd.read_csv(policyFolder + '/Outputs.csv')
 #                        self.outputData.to_csv('baseOutputs.csv', index=False)
-                        
-            print 'Loading base simulation.....'
-            self.pop = pickle.load(open('save.p', 'rb'))
-            self.map = pickle.load(open('save.m', 'rb'))
-            self.from_IDs_to_Agents()
-            # if self.p['loadSim'] == True:
+            else:
+                print 'Loading base simulation.....'
+                self.pop = pickle.load(open('save.p', 'rb'))
+                self.map = pickle.load(open('save.m', 'rb'))
+                self.from_IDs_to_Agents()
+                # if self.p['loadSim'] == True:
             
             # Display
             self.displayHouse = self.pop.allPeople[0].house
