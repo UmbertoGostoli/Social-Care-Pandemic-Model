@@ -933,7 +933,7 @@ class Sim:
             if i == 4:
                 self.mobilityReduction_Q5 = np.mean(reductionRatesInQuintile)
             
-        for i in range(self.p['ageClasses']):
+        for i in range(int(self.p['ageClasses'])):
             reductionRatesByAge = [x.contactReductionRate for x in self.pop.livingPeople if x.ageClass == i]
             if i == 0:
                 self.mobilityReduction_A1 = np.mean(reductionRatesByAge)
