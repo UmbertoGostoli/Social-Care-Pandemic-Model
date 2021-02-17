@@ -450,7 +450,7 @@ def init_params():
     # Not used in current version
     # p['ageRiskFactor'] = 0.05
     p['socialPreferenceFactor'] = 0.01 # 0.5
-    p['behaviouralResponseFactor'] = 400.0 # 1000.0
+    p['behaviouralResponseFactor'] = 50.0 # 100.0
     p['timeDiscountingFactor'] = 0.7
     p['workingFactorReduction'] = [0.2, 0.2, 0.25, 0.35, 0.5]
     p['incomeBehaviourExp'] = 0.2 # 0.5
@@ -461,8 +461,8 @@ def init_params():
     p['sameTownWeight'] = 200.0
     p['randomContactsShare'] = 0.0 # 1.0
     p['fractionSWcontacts'] = 0.05
-    p['friendsInteractionExp'] = 1.2
-    p['friendsInteractionBeta'] = 0.25 #
+    p['friendsInteractionExp'] = 0.5 # 1.2
+    p['friendsInteractionBeta'] = 0.1 # 0.25
     p['classInteractionExp'] = 2.0 # 2.0
     p['classInteractionBeta'] = 0.2 # 0.1
     p['locationInteractionExp'] = 2.0 # 2.0
@@ -477,8 +477,8 @@ def init_params():
     
     p['viralLoadWeight'] = 0.5
     # p['maleSeverityWeight'] = 1.5
-    p['incomeSeverityWeight'] = 0.5 # 2.0
-    p['ageSeverityWeight'] = 2.0
+    p['incomeSeverityWeight'] = 0.2 # 2.0
+    p['ageSeverityWeight'] = 0.5 # 2.0
     p['mildConditionBeta'] = 0.5
     
     p['incomeClasses'] = 5
@@ -509,7 +509,7 @@ def init_params():
     
     p['lockdownEvent'] = 'death' # 'hospitalization' # 'intubation'
     p['lockdownPeriod'] = 3
-    p['daysFromEvent'] = 7  # Switch off the lockdown
+    p['daysFromEvent'] = 3  # Switch off the lockdown
     p['endLockdownIndicator'] = 'newCases'
     p['benchmarkIndicator'] = 'overMax'
     p['thresholdIndicator'] = 1.0/8.0

@@ -410,7 +410,7 @@ class Sim:
             self.nextDisplayHouse = None
         
         if policy == 0:
-            
+            fromAgentsToIDs = False
             if self.p['loadSim'] == False:
                 
                 for self.year in range(int(self.p['startYear']), int(self.p['endYear'])):
@@ -421,6 +421,7 @@ class Sim:
                     self.doOneYear(policyFolder, dataMapFolder, dataHouseholdFolder, self.year)
                     
                     if self.p['saveSim'] == True and self.year == int(self.p['endYear']-1):
+                        fromAgentsToIDs = True
                         self.from_Agents_to_IDs()
                         pickle.dump(self.pop, open('save.p', 'wb'))
                         pickle.dump(self.map, open('save.m', 'wb'))
@@ -430,8 +431,9 @@ class Sim:
                 print 'Loading base simulation.....'
                 self.pop = pickle.load(open('save.p', 'rb'))
                 self.map = pickle.load(open('save.m', 'rb'))
+            if fromAgentsToIDs == True or self.p['loadSim'] == True:
                 self.from_IDs_to_Agents()
-                # if self.p['loadSim'] == True:
+            # if self.p['loadSim'] == True:
             
             # Display
             self.displayHouse = self.pop.allPeople[0].house
@@ -551,6 +553,7 @@ class Sim:
                 print 'Lockdown ended in day: ' + str(self.pandemicDay)
                     
             print 'Lockdown state: ' + str(self.lockdown)
+            print 'Care lockdown state: ' + str(self.p['careLockdown'])
             print 'Max Cases: ' + str(self.maxNewCases)
             print 'Cases at lockdown: ' + str(self.lockdownMaxCases)
             
@@ -1552,9 +1555,10 @@ class Sim:
         agentsToAssign = list(newMild)
         n = 0
         while len(agentsToAssign) > 0:
-            loadFactors = [math.pow(x.viralLoad, self.p['viralLoadWeight']) for x in agentsToAssign]
-            ageFactors = [math.pow((x.ageClass+1), self.p['ageSeverityWeight']) for x in agentsToAssign]
-            classFactors = [1.0/math.pow((x.incomeQuintile+1), self.p['incomeSeverityWeight']) for x in agentsToAssign]
+            loadFactors = [np.exp(x.viralLoad*self.p['viralLoadWeight']) for x in agentsToAssign]
+            ageFactors = [self.p['infectionFatalityRatio'][x.ageClass] for x in agentsToAssign]
+            # classFactors = [1.0/np.exp((x.incomeQuintile)*self.p['incomeSeverityWeight']) for x in agentsToAssign]
+            classFactors = [math.pow(self.p['severityClassBias'], x.incomeQuintile) for x in agentsToAssign]
             genderFactors = []
             for agent in agentsToAssign:
                 if agent.sex == 'male':
@@ -1674,6 +1678,7 @@ class Sim:
                     self.deathsByAge[agent.ageClass] += 1
                     if self.periodFirstDeath == -1:
                         self.periodFirstDeath = day
+                        
                     agent.dead = True
                     agent.hospitalized = False
                     agent.inIntensiveCare = False
@@ -5504,7 +5509,7 @@ class Sim:
             # If lockdown == False or careLockdown == False:
             # First level
             
-            if self.p['lockdown'] == False or self.p['careLockdown'] == False:
+            if self.lockdown == False or self.p['careLockdown'] == False:
                 if person.father != None:
                     nok = person.father
                     if nok.dead == False and nok.house not in visited:
