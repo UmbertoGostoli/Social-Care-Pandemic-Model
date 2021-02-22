@@ -1945,10 +1945,14 @@ class Sim:
             else:
                 popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange']]
             for j in range(int(self.p['incomeClasses'])):
-                popClass = [x for x in popAge if x.incomeQuintile == j]
-                popMaleInClass = [x for x in popClass if x.sex == 'male']
-                sharesMales.append(float(len(popMaleInClass))/float(len(popClass)))
-                sharesQuintile.append(float(len(popClass))/float(len(popAge)))
+                shareGender = 0
+                if len(popClass) > 0:
+                    shareGender = float(len(popMaleInClass))/float(len(popClass))
+                sharesMales.append(shareGender)
+                shareQuintile = 0
+                if len(popAge) > 0:
+                    shareQuintile = float(len(popClass))/float(len(popAge))
+                sharesQuintile.append(shareQuintile)
             sharesQuintilesByAge.append(sharesQuintile)
             sharesMalesByAgeAndIncome.append(sharesMales)
         
