@@ -1941,9 +1941,9 @@ class Sim:
             sharesQuintile = []
             sharesMales = []
             if i < self.p['ageClasses']-1:
-                popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange'] and x.age < (i+1)*self.p['ageRange']-1]
+                popAge = [x for x in self.pop.livingPeople if x.age >= i*self.p['ageRange'] and x.age < (i+1)*self.p['ageRange']-1]
             else:
-                popAge = [x for x in self.pop.livingPeople if x.age > i*self.p['ageRange']]
+                popAge = [x for x in self.pop.livingPeople if x.age >= i*self.p['ageRange']]
             for j in range(int(self.p['incomeClasses'])):
                 shareGender = 0
                 if len(popClass) > 0:
