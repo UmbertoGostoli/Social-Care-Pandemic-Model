@@ -54,18 +54,17 @@ class Sim:
         
         self.Outputs = ['day', 'currentPop', 'popFromStart', 'numHouseholds', 'averageHouseholdSize', 'marriageTally', 
                         'marriagePropNow', 'divorceTally', 'shareSingleParents', 'shareFemaleSingleParent', 
-                        'taxPayers', 'taxBurden', 'familyCareRatio', 'employmentRate', 'shareWorkingHours', 
+                        'taxPayers', 'taxBurden', 'familyCareRatio', 'shareInHouseSocialCare', 'employmentRate', 'shareWorkingHours', 
                         'publicSocialCare', 'costPublicSocialCare', 'sharePublicSocialCare', 'costTaxFreeSocialCare', 
                         'publicChildCare', 'costPublicChildCare', 'sharePublicChildCare', 'costTaxFreeChildCare', 
                         'totalTaxRevenue', 'totalPensionRevenue', 'pensionExpenditure', 'totalHospitalizationCost', 
-                        'totalInformalChildCare', 
-                        'formalChildCare', 'childcareIncomeShare', 'shareInformalChildCare', 'shareCareGivers', 
+                        'totalInformalChildCare', 'formalChildCare', 'childcareIncomeShare', 'shareInformalChildCare', 'shareCareGivers', 
                         'ratioFemaleMaleCarers', 'shareMaleCarers', 'shareFemaleCarers', 'ratioWage', 'ratioIncome', 
                         'shareFamilyCarer', 'share_over20Hours_FamilyCarers', 'averageHoursOfCare', 'share_40to64_carers', 
                         'share_over65_carers', 'share_10PlusHours_over70', 'totalSocialCareNeed', 
                         'totalInformalSocialCare', 'totalFormalSocialCare', 'totalUnmetSocialCareNeed', 
                         'totalSocialCare', 'share_InformalSocialCare', 'share_UnmetSocialCareNeed',
-                        'totalOWSC', 'shareOWSC', 'totalCostOWSC',
+                        'totalOWSC', 'shareOWSC', 'totalCostOWSC', 'inHouseCareSupplyRatio',
                         'q1_socialCareNeed', 'q1_informalSocialCare', 'q1_formalSocialCare', 'q1_unmetSocialCareNeed', 'q1_outOfWorkSocialCare',
                         'q2_socialCareNeed', 'q2_informalSocialCare', 'q2_formalSocialCare', 'q2_unmetSocialCareNeed', 'q2_outOfWorkSocialCare',
                         'q3_socialCareNeed', 'q3_informalSocialCare', 'q3_formalSocialCare', 'q3_unmetSocialCareNeed', 'q3_outOfWorkSocialCare',
@@ -160,6 +159,9 @@ class Sim:
         self.publicChildCare = 0
         self.sharePublicSocialCare = 0
         self.sharePublicChildCare = 0
+        self.totInHouseSupply = 0
+        self.totExternalSupply = 0
+        self.inHouseCareSupplyRatio = 0
         self.stateTaxRevenue = []
         self.totalTaxRevenue = 0
         self.statePensionRevenue = []
@@ -1945,6 +1947,8 @@ class Sim:
             else:
                 popAge = [x for x in self.pop.livingPeople if x.age >= i*self.p['ageRange']]
             for j in range(int(self.p['incomeClasses'])):
+                popClass = [x for x in popAge if x.incomeQuintile == j]
+                popMaleInClass = [x for x in popClass if x.sex == 'male']
                 shareGender = 0
                 if len(popClass) > 0:
                     shareGender = float(len(popMaleInClass))/float(len(popClass))
@@ -2520,6 +2524,8 @@ class Sim:
         for person in self.pop.livingPeople:
             person.careNetwork.clear()
             person.suppliers[:] = []
+            person.inHouseInformalCare = 0
+            person.externalInformalCare = 0
             if person.hoursSocialCareDemand > 0:
                 person.cumulativeUnmetNeed *= self.p['unmetCareNeedDiscountParam']
                 person.cumulativeUnmetNeed += person.unmetSocialCareNeed
@@ -2838,8 +2844,20 @@ class Sim:
         self.computeResidualIncomeForSocialCare()
         
         receivers = [x for x in self.pop.livingPeople if x.unmetSocialCareNeed > 0]
+        self.totInHouseSupply = 0
+        self.totExternalSupply = 0
         for receiver in receivers:
             self.computeSocialCareNetworkSupply_Ind(receiver)
+
+        self.totInHouseSupply = sum([x.inHouseInformalCare for x in receivers])
+        self.totExternalSupply = sum([x.externalInformalCare for x in receivers])
+        
+        self.inHouseCareSupplyRatio = 0
+        if self.totInHouseSupply+self.totExternalSupply > 0:
+            self.inHouseCareSupplyRatio = float(self.totInHouseSupply)/float(self.totInHouseSupply+self.totExternalSupply)
+        
+        print 'Share of in-house care supply: ' + str(self.inHouseCareSupplyRatio)
+        
         residualReceivers = [x for x in receivers if x.networkSupply > 0]
         
         while len(residualReceivers) > 0:
@@ -4219,9 +4237,15 @@ class Sim:
             # householdInformalSupply = []
             # for i in range(4):
                 # householdInformalSupply.append(sum([x.residualInformalSupplies[i] for x in householdCarers]))
+            
             informalSupply = 0
             if supplierTown == town:
                 informalSupply = float(sum([x.residualInformalSupplies[distance] for x in householdCarers]))
+                if supplier.house == person.house:
+                    person.inHouseInformalCare += float(sum([x.residualInformalSupplies[distance] for x in householdCarers]))
+                else:
+                    person.externalInformalCare += float(sum([x.residualInformalSupplies[distance] for x in householdCarers]))
+                    
             person.networkInformalSupplies.append(informalSupply)
             person.networkSupply += informalSupply
             weightedInformalSupply = informalSupply
@@ -5421,82 +5445,84 @@ class Sim:
             
             household = list(house.occupants)
             residualCareNeed = sum([x.unmetSocialCareNeed for x in household])
+            
+            if self.lockdown == False or self.p['careLockdown'] == False:
             # Distance 1
-            for member in household:
-                
-                if member.father != None:
-                    nok = member.father
-                    if nok.dead == False and nok not in household and nok.house not in visited:
-                        house.careNetwork.add_edge(house, nok.house, distance = 1)
-                        visited.append(nok.house)
-                    nok = member.mother
-                    if nok.dead == False and nok not in household and nok.house not in visited:
-                        house.careNetwork.add_edge(house, nok.house, distance = 1)
-                        visited.append(nok.house)
-                for child in member.children:
-                    nok = child
-                    if nok.dead == False and nok not in household and nok.house not in visited:
-                        house.careNetwork.add_edge(house, nok.house, distance = 1)
-                        visited.append(nok.house)
-                        
-            # Distance 2
-            for member in household:
-                if member.father != None:
-                    if member.father.father != None:
-                        nok = member.father.father
+                for member in household:
+                    
+                    if member.father != None:
+                        nok = member.father
                         if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 2)
+                            house.careNetwork.add_edge(house, nok.house, distance = 1)
                             visited.append(nok.house)
-                        nok = member.father.mother
+                        nok = member.mother
                         if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 2)
+                            house.careNetwork.add_edge(house, nok.house, distance = 1)
                             visited.append(nok.house)
-                    if member.mother.father != None:
-                        nok = member.mother.father
+                    for child in member.children:
+                        nok = child
                         if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 2)
-                            visited.append(nok.house)
-                        nok = member.mother.mother
-                        if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 2)
-                            visited.append(nok.house)
-                    brothers = list(set(member.father.children + member.mother.children))
-                    brothers.remove(member)
-                    for brother in brothers:
-                        nok = brother
-                        if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 2)
-                            visited.append(nok.house)
-                for child in member.children:
-                    for grandchild in child.children:
-                        nok = grandchild
-                        if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 2)
+                            house.careNetwork.add_edge(house, nok.house, distance = 1)
                             visited.append(nok.house)
                             
-            # Distance 3
-            for member in household:
-                uncles = []
-                if member.father != None:
-                    if member.father.father != None:
-                        uncles = list(set(member.father.father.children + member.father.mother.children))
-                        uncles.remove(member.father)
-                    if member.mother.father != None:
-                        uncles.extend(list(set(member.mother.father.children + member.mother.mother.children)))
-                        uncles.remove(member.mother)
-                    for uncle in uncles:
-                        nok = uncle
-                        if nok.dead == False and nok not in household and nok.house not in visited:
-                            house.careNetwork.add_edge(house, nok.house, distance = 3)
-                            visited.append(nok.house)
-                    brothers = list(set(member.father.children + member.mother.children))
-                    brothers.remove(member)
-                    for brother in brothers:
-                        for child in brother.children:
-                            nok = child
+                # Distance 2
+                for member in household:
+                    if member.father != None:
+                        if member.father.father != None:
+                            nok = member.father.father
+                            if nok.dead == False and nok not in household and nok.house not in visited:
+                                house.careNetwork.add_edge(house, nok.house, distance = 2)
+                                visited.append(nok.house)
+                            nok = member.father.mother
+                            if nok.dead == False and nok not in household and nok.house not in visited:
+                                house.careNetwork.add_edge(house, nok.house, distance = 2)
+                                visited.append(nok.house)
+                        if member.mother.father != None:
+                            nok = member.mother.father
+                            if nok.dead == False and nok not in household and nok.house not in visited:
+                                house.careNetwork.add_edge(house, nok.house, distance = 2)
+                                visited.append(nok.house)
+                            nok = member.mother.mother
+                            if nok.dead == False and nok not in household and nok.house not in visited:
+                                house.careNetwork.add_edge(house, nok.house, distance = 2)
+                                visited.append(nok.house)
+                        brothers = list(set(member.father.children + member.mother.children))
+                        brothers.remove(member)
+                        for brother in brothers:
+                            nok = brother
+                            if nok.dead == False and nok not in household and nok.house not in visited:
+                                house.careNetwork.add_edge(house, nok.house, distance = 2)
+                                visited.append(nok.house)
+                    for child in member.children:
+                        for grandchild in child.children:
+                            nok = grandchild
+                            if nok.dead == False and nok not in household and nok.house not in visited:
+                                house.careNetwork.add_edge(house, nok.house, distance = 2)
+                                visited.append(nok.house)
+                                
+                # Distance 3
+                for member in household:
+                    uncles = []
+                    if member.father != None:
+                        if member.father.father != None:
+                            uncles = list(set(member.father.father.children + member.father.mother.children))
+                            uncles.remove(member.father)
+                        if member.mother.father != None:
+                            uncles.extend(list(set(member.mother.father.children + member.mother.mother.children)))
+                            uncles.remove(member.mother)
+                        for uncle in uncles:
+                            nok = uncle
                             if nok.dead == False and nok not in household and nok.house not in visited:
                                 house.careNetwork.add_edge(house, nok.house, distance = 3)
                                 visited.append(nok.house)
+                        brothers = list(set(member.father.children + member.mother.children))
+                        brothers.remove(member)
+                        for brother in brothers:
+                            for child in brother.children:
+                                nok = child
+                                if nok.dead == False and nok not in household and nok.house not in visited:
+                                    house.careNetwork.add_edge(house, nok.house, distance = 3)
+                                    visited.append(nok.house)
         
         # Add the lockdown conditions...
         
@@ -7763,7 +7789,9 @@ class Sim:
         totalSocialCare = totalInformalSocialCare + totalFormalSocialCare
         totalUnmetSocialCareNeed = sum([x.unmetSocialCareNeed for x in self.pop.livingPeople])
         
+        shareInHouseSocialCare = self.inHouseInformalCare/totalInformalSocialCare
         
+        print 'Share of in-house informal care: ' + str(shareInHouseSocialCare)
         
         share_InformalSocialCare = 0
         if totalSocialCare > 0:
@@ -8033,7 +8061,7 @@ class Sim:
         # self.gdpRatio = float(sum([x.workingShare for x in self.pop.livingPeople]))/float(len(self.pop.livingPeople))
         
         outputs = [day, currentPop, everLivedPop, numHouseholds, averageHouseholdSize, self.marriageTally, marriagePropNow, 
-                   self.divorceTally, shareSingleParents, shareFemaleSingleParent, taxPayers, taxBurden, familyCareRatio, 
+                   self.divorceTally, shareSingleParents, shareFemaleSingleParent, taxPayers, taxBurden, familyCareRatio, shareInHouseSocialCare,
                    shareEmployed, shareWorkHours, self.publicSocialCare, self.costPublicSocialCare, self.sharePublicSocialCare, 
                    self.costTaxFreeSocialCare, self.publicChildCare, self.costPublicChildCare, self.sharePublicChildCare, 
                    self.costTaxFreeChildCare, self.totalTaxRevenue, self.totalPensionRevenue, self.pensionExpenditure, 
@@ -8042,7 +8070,7 @@ class Sim:
                    ratioIncome, shareFamilyCarer, share_over20Hours_FamilyCarers, averageHoursOfCare, share_40to64_carers, 
                    share_over65_carers, share_10PlusHours_over70, totalSocialCareNeed, totalInformalSocialCare, totalFormalSocialCare, 
                    totalUnmetSocialCareNeed, totalSocialCare, share_InformalSocialCare, share_UnmetSocialCareNeed, 
-                   totalOWSC, shareOWSC, totalCostOWSC,
+                   totalOWSC, shareOWSC, totalCostOWSC, self.inHouseCareSupplyRatio,
                    q1_socialCareNeed, q1_informalSocialCare, q1_formalSocialCare, q1_unmetSocialCareNeed, q1_outOfWorkSocialCare,
                    q2_socialCareNeed, q2_informalSocialCare, q2_formalSocialCare, q2_unmetSocialCareNeed, q2_outOfWorkSocialCare,
                    q3_socialCareNeed, q3_informalSocialCare, q3_formalSocialCare, q3_unmetSocialCareNeed, q3_outOfWorkSocialCare,
