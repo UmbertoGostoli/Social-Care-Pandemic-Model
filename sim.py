@@ -162,6 +162,9 @@ class Sim:
         self.totInHouseSupply = 0
         self.totExternalSupply = 0
         self.inHouseCareSupplyRatio = 0
+        self.probsRelocation = []
+        self.relocationCostFactors = []
+        self.incomeFactors = []
         self.stateTaxRevenue = []
         self.totalTaxRevenue = 0
         self.statePensionRevenue = []
@@ -1869,6 +1872,8 @@ class Sim:
         self.doMarriages(policyFolder)
         
         self.doMovingAround(policyFolder)
+        
+        self.checkHouseholdsRelocations()
         
         if year == self.p['endYear']-1:
             print 'Creating ego networks....'
@@ -6196,7 +6201,7 @@ class Sim:
                         if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
                             homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
                         if self.p['careLockdown'] == False:
-                            otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
+                            otherSupplies = [float(x)*(1.0+self.p['increasedSupplyFactor']) for x in supplies[1:]]
                         else:
                             otherSupplies = [0 for x in supplies[1:]]
                         supplies = [homeSupply]
@@ -6216,7 +6221,7 @@ class Sim:
                         if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
                             homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
                         if self.p['careLockdown'] == False:
-                            otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
+                            otherSupplies = [float(x)*(1.0+self.p['increasedSupplyFactor']) for x in supplies[1:]]
                         else:
                             otherSupplies = [0 for x in supplies[1:]]
                         supplies = [homeSupply]
@@ -6235,7 +6240,7 @@ class Sim:
                     if self.lockdown == True:
                         homeSupply = supplies[0]
                         if self.p['careLockdown'] == False:
-                            otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
+                            otherSupplies = [float(x) for x in supplies[1:]]
                         else:
                             otherSupplies = [0 for x in supplies[1:]]
                         supplies = [homeSupply]
@@ -6255,7 +6260,7 @@ class Sim:
                         if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
                             homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
                         if self.p['careLockdown'] == False:
-                            otherSupplies = [float(x)*self.p['supplyReductionRate'] for x in supplies[1:]]
+                            otherSupplies = [float(x)*(1.0+self.p['increasedSupplyFactor']) for x in supplies[1:]]
                         else:
                             otherSupplies = [0 for x in supplies[1:]]
                         supplies = [homeSupply]
@@ -7231,6 +7236,10 @@ class Sim:
         family might move at random for work reasons. Older people
         might move back in with their kids.
         """
+        self.relocationCostFactors[:] = []
+        self.incomeFactors[:] = []
+        self.probsRelocation[:] = []
+        
         for i in self.pop.livingPeople:
             i.movedThisYear = False
             
@@ -7239,9 +7248,7 @@ class Sim:
         couples = []
         for i in separetedSpouses:
             couples.append([i, i.partner])
-            
-        
-            
+       
         for person in separetedSpouses:
             
             
@@ -7317,7 +7324,12 @@ class Sim:
                     peopleToMove = [person]
                     peopleToMove += self.bringTheKids(person)
                     distance = random.choice(['here','near'])
-                    towns = [person.house.town]
+                    
+                    # Select a town based on:
+                    # 1 - Distance form current town
+                    # 2 - Size of town
+                    # Gravitational model: town attraction = Size/pow(distance+1, beta)
+                    towns = self.selectTown(person.house.town)    #[person.house.town]
                     
 #                    if distance == 'near':
 #                        nearbyTowns = [ k for k in self.map.towns if abs(k.x - town.x) <= 1 and abs(k.y - town.y) <= 1 ]
@@ -7376,46 +7388,54 @@ class Sim:
                         
         
             
-#            elif person.partner != None and person.yearMarried[-1] != self.year:
-#                ## any other kind of married person, e.g., a normal family with kids
-#                house = person.house
-#                household = [x for x in house.occupants]
-#                
-#                # Compute relocation probability
-#                relocationCost = self.p['relocationCostParam']*sum([math.pow(x.yearInTown, self.p['yearsInTownBeta']) for x in household])
-#                supportNetworkFactor = math.exp(self.p['supportNetworkBeta']*house.networkSupport)
-#                relocationCostFactor = math.exp(self.p['relocationCostBeta']*relocationCost)
-#                perCapitaIncome = self.computeHouseholdIncome(house)/float(len(household))
-#                incomeFactor = math.exp(self.p['incomeRelocationBeta']*perCapitaIncome)
-#                relativeRelocationFactor = (supportNetworkFactor*relocationCostFactor)/incomeFactor
-#                probRelocation = self.p['baseRelocationRate']/relativeRelocationFactor
-#               
-#                if random.random() < probRelocation: #self.p['basicProbFamilyMove']*self.p['probFamilyMoveModifierByDecade'][int(ageClass)]:
-#                    
-#                    peopleToMove = [x for x in person.house.occupants]
-##                    personChildren = self.bringTheKids(person)
-##                    peopleToMove += personChildren
-##                    partnerChildren = self.bringTheKids(person.partner)
-##                    peopleToMove += [x for x in partnerChildren if x not in personChildren]
-##                    stepChildrenPartner = [x for x in personChildren if x not in partnerChildren]
-##                    stepChildrenPerson = [x for x in partnerChildren if x not in personChildren]
-##                    person.children.extend(stepChildrenPerson)
-##                    person.partner.children.extend(stepChildrenPartner)
-#                    
-#                    # Add a choice of town which depends on kinship network and available houses.
-#                    
-#                    distance = random.choice(['here,''near','far'])
-#                    if person.house == self.displayHouse:
-#                        messageString = str(self.year) + ": #" + str(person.id) + " and #" + str(person.partner.id) + " move house"
-#                        if len(peopleToMove) > 2:
-#                            messageString += " with kids"
-#                        messageString += "."
-#                        self.textUpdateList.append(messageString)
-#                        with open(os.path.join(policyFolder, "Log.csv"), "a") as file:
-#                            writer = csv.writer(file, delimiter = ",", lineterminator='\r')
-#                            writer.writerow([self.year, messageString])
-#                        
-#                    self.findNewHouse(peopleToMove,distance, policyFolder)
+            elif person.partner != None and person.yearMarried[-1] != self.year and person.house.vacated == False:
+                ## any other kind of married person, e.g., a family with kids
+                house = person.house
+                household = [x for x in house.occupants]
+                
+                # Compute relocation probability
+                # Relocation cost: the higher the lower the prob to relocate
+                relocationCost = self.p['relocationCostParam']*sum([math.pow(x.yearInTown, self.p['yearsInTownBeta']) for x in household])
+                relocationCostFactor = 1.0/math.exp(self.p['relocationCostBeta']*relocationCost)
+                # Support the household is getting in the current town: the hoigher the lower the probability to relocate
+                supportNetworkFactor = 1.0/math.exp(self.p['supportNetworkBeta']*house.networkSupport)
+                # Income factor: the higher the higher the probability to relocate
+                perCapitaIncome = self.computeHouseholdIncome(house)/float(len(household))
+                incomeFactorElement = math.exp(self.p['incomeRelocationBeta']*perCapitaIncome)
+                incomeFactor = (incomeFactorElement-1.0)/incomeFactorElement
+                relativeRelocationFactor = supportNetworkFactor*relocationCostFactor*incomeFactor
+                probRelocation = self.p['baseRelocationRate']*relativeRelocationFactor
+                
+                self.relocationCostFactors.append(relocationCostFactor)
+                self.incomeFactors.append(incomeFactor)
+                self.probsRelocation.append(probRelocation)
+                if np.random.random() < probRelocation: #self.p['basicProbFamilyMove']*self.p['probFamilyMoveModifierByDecade'][int(ageClass)]:
+                    person.house.vacated = True
+                    peopleToMove = [x for x in person.house.occupants]
+#                    personChildren = self.bringTheKids(person)
+#                    peopleToMove += personChildren
+#                    partnerChildren = self.bringTheKids(person.partner)
+#                    peopleToMove += [x for x in partnerChildren if x not in personChildren]
+#                    stepChildrenPartner = [x for x in personChildren if x not in partnerChildren]
+#                    stepChildrenPerson = [x for x in partnerChildren if x not in personChildren]
+#                    person.children.extend(stepChildrenPerson)
+#                    person.partner.children.extend(stepChildrenPartner)
+                    
+                    # Add a choice of town which depends on kinship network and available houses.
+                    
+                    # distance = random.choice(['here,''near','far'])
+                    towns = self.selectTown(person.house.town)
+                    if person.house == self.displayHouse:
+                        messageString = str(self.year) + ": #" + str(person.id) + " and #" + str(person.partner.id) + " move house"
+                        if len(peopleToMove) > 2:
+                            messageString += " with kids"
+                        messageString += "."
+                        self.textUpdateList.append(messageString)
+                        with open(os.path.join(policyFolder, "Log.csv"), "a") as file:
+                            writer = csv.writer(file, delimiter = ",", lineterminator='\r')
+                            writer.writerow([self.year, messageString])
+                        
+                    self.findNewHouse(peopleToMove,towns, policyFolder)
                     
         
         # Update display house
@@ -7434,6 +7454,27 @@ class Sim:
                 for k in self.displayHouse.occupants:
                     messageString += "#" + str(k.id) + " "
                 self.textUpdateList.append(messageString)
+    
+    def selectTown(self, personTown):
+        sizes = [len(x.houses) for x in self.map.towns]
+        distances = [self.manhattanDistance(personTown, x) for x in self.map.towns]
+        weights = [float(s)/float(np.power(d+1, self.p['townSelectionExp'])) for s, d, in zip(sizes, distances)]
+        probs = [x/sum(weights) for x in weights]
+        newTown = np.random.choice(self.map.towns, p = probs)
+        return [newTown]
+    
+    def checkHouseholdsRelocations(self):
+
+        newResidences = len([x for x in self.map.occupiedHouses if x.vacated == True])
+        shareRelocations = float(newResidences)/float(len(self.map.occupiedHouses))
+        
+        print 'Mean relocation cost factors: ' + str(np.mean(self.relocationCostFactors))
+        print 'Mean income factors: ' + str(np.mean(self.incomeFactors))
+        print 'Mean prob relocation: ' + str(np.mean(self.probsRelocation))
+        print 'Share of households relocated: ' + str(shareRelocations)
+        
+        for house in self.map.allHouses:
+            house.vacated = False      
     
     def selectSpousesTown(self, town1, town2):
         prob1 = float(len(town1.houses))/(float(len(town1.houses))+float(len(town2.houses)))

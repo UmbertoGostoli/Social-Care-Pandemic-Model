@@ -65,6 +65,8 @@ class Person:
         self.genderWeight = 1.0
         self.nokCareContacts = []
         self.totalContacts = 0
+        self.inHouseInformalCare = 0
+        self.externalInformalCare = 0
         
         self.children = []
         self.childrenID = [] # For pickle
