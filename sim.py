@@ -6198,6 +6198,7 @@ class Sim:
                         elif member.symptomsLevel == 'mild':
                             supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
+                        homeSupply = supplies[0]
                         if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
                             homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
                         if self.p['careLockdown'] == False:
@@ -6218,6 +6219,7 @@ class Sim:
                         elif member.symptomsLevel == 'mild':
                             supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
+                        homeSupply = supplies[0]
                         if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
                             homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
                         if self.p['careLockdown'] == False:
@@ -6257,6 +6259,7 @@ class Sim:
                         elif member.symptomsLevel == 'mild':
                             supplies = [float(x)*(1.0-member.mildConditionIndex) for x in supplies]
                     if self.lockdown == True:
+                        homeSupply = supplies[0]
                         if member.symptomatic == False or member.mildConditionIndex < self.p['symptomSocialCareThreshold']:
                             homeSupply = float(supplies[0])*(1.0+self.p['increasedSupplyFactor'])
                         if self.p['careLockdown'] == False:
