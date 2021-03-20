@@ -903,22 +903,22 @@ class Sim:
                     if behaviouralIsolationRate < person.contactReductionRate:
                         person.contactReductionRate = behaviouralIsolationRate
         
-        print 'Share of negative test: ' + str(float(count)/float(len(self.pop.livingPeople)))
-        print 'Max risk: ' + str(max(risksList))
-        print 'Mean risk: ' + str(np.mean(risksList))
-        print 'Median risk: ' + str(np.median(risksList))
-        print 'Min risk: ' + str(min(risksList))
+#        print 'Share of negative test: ' + str(float(count)/float(len(self.pop.livingPeople)))
+#        print 'Max risk: ' + str(max(risksList))
+#        print 'Mean risk: ' + str(np.mean(risksList))
+#        print 'Median risk: ' + str(np.median(risksList))
+#        print 'Min risk: ' + str(min(risksList))
+#        
+#        print 'Max behaviour isolation rate: ' + str(max(behaviouralIsolationRates))
+#        print 'Mean behaviour isolation rate: ' + str(np.mean(behaviouralIsolationRates))
+#        print 'Median behaviour isolation rate: ' + str(np.median(behaviouralIsolationRates))
+#        print 'Min behaviour isolation rate: ' + str(min(behaviouralIsolationRates))
         
-        print 'Max behaviour isolation rate: ' + str(max(behaviouralIsolationRates))
-        print 'Mean behaviour isolation rate: ' + str(np.mean(behaviouralIsolationRates))
-        print 'Median behaviour isolation rate: ' + str(np.median(behaviouralIsolationRates))
-        print 'Min behaviour isolation rate: ' + str(min(behaviouralIsolationRates))
         
-        
-        self.minIsolationRate = min(behaviouralIsolationRates)
-        self.maxIsolationRate = max(behaviouralIsolationRates)
-        self.meanIsolationRate = np.mean(behaviouralIsolationRates)
-        self.medianIsolationRate = np.median(behaviouralIsolationRates)
+#        self.minIsolationRate = min(behaviouralIsolationRates)
+#        self.maxIsolationRate = max(behaviouralIsolationRates)
+#        self.meanIsolationRate = np.mean(behaviouralIsolationRates)
+#        self.medianIsolationRate = np.median(behaviouralIsolationRates)
         
         self.maxContacts = max([x.numContacts for x in self.pop.livingPeople])
         
@@ -1412,7 +1412,8 @@ class Sim:
                     genderIndex = 0
                     if person.sex == 'female':
                         genderIndex = 1
-                        
+                    
+
                     prob = self.probSymptomatic[person.ageClass][person.incomeQuintile][genderIndex]
                     if np.random.random() > prob: # self.p['probSymptomatic'][person.ageClass]:
                         # In this case the agent is asymptomatic
@@ -1436,15 +1437,94 @@ class Sim:
                             else:
                                 prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
                                 if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
-                                    # In this case, agent is not dead
                                     person.severityLevel = 4
                                     person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                     person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                                else:
-                                    # In this case, agent is dead
-                                    person.severityLevel = 5
-                                    person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
-                                    person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
+                                    
+                                        
+                
+                # Compute the nmber of agents that will die for each group
+                # = to numerosity*probability.
+                # Then, assign deaths to symptomatic, hospitalized only and intubated, with increasing proportion (i.e. 0.1, 0.25, 0.65)
+                dead = []
+                for y in self.p['ageClasses']:
+                    for i in self.p['incomeClasses']:
+                        # Males
+                        males = [x for x in internationalExposed if x.ageClass == y and x.incomeQuintile == i and x.sex == 'male']
+                        popMales = len(males)
+                        # Assign deaths to conditions
+                        # deaths = int(math.ceil(float(popMales)*self.infectionFatalityRatio[y][i][0]))
+                        deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][0])
+                        residualDeaths = deaths
+                        # Intubated
+                        intubated = [x for x in males if x.severityLevel == 4]
+                        deathIntubated = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                        if deathIntubated < len(intubated):
+                            intubatedDead = np.random.choice(intubated, deathIntubated, replace = False)
+                            dead.extend(intubatedDead)
+                            intubatedDeaths = deathIntubated
+                        else:
+                            dead.extend([x for x in intubated])
+                            intubatedDeaths = len(intubated)
+                        residualDeaths -= intubatedDeaths
+                        
+                        # Hospitalized
+                        hospitalized = [x for x in males if x.severityLevel == 3]
+                        deathHospitalized = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                        if deathHospitalized < len(hospitalized):
+                            hospitalizedDead = np.random.choice(hospitalized, deathHospitalized, replace = False)
+                            dead.extend(hospitalizedDead)
+                            hospitalizedDeaths = deathHospitalized
+                        else:
+                            dead.extend([x for x in hospitalized])
+                            hospitalizedDeaths = len(hospitalized)
+                        residualDeaths -= hospitalizedDeaths
+                        
+                        # Sample deaths among symptomatic not hospitalized
+                        if residualDeaths > 0:
+                            symptomatic = [x for x in males if x.severityLevel == 2]
+                            dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                        
+                        # Feales
+                        females = [x for x in internationalExposed if x.ageClass == y and x.incomeQuintile == i and x.sex == 'female']
+                        popFemales = len(females)
+                        # Assign deaths to conditions
+                        # deaths = int(math.ceil(float(popFemales)*self.infectionFatalityRatio[y][i][1]))
+                        deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][0])
+                        residualDeaths = deaths
+                        # Intubated
+                        intubated = [x for x in males if x.severityLevel == 4]
+                        deathIntubated = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                        if deathIntubated < len(intubated):
+                            intubatedDead = np.random.choice(intubated, deathIntubated, replace = False)
+                            dead.extend(intubatedDead)
+                            intubatedDeaths = deathIntubated
+                        else:
+                            dead.extend([x for x in intubated])
+                            intubatedDeaths = len(intubated)
+                        residualDeaths -= intubatedDeaths
+                        
+                        # Hospitalized
+                        hospitalized = [x for x in males if x.severityLevel == 3]
+                        deathHospitalized = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                        if deathHospitalized < len(hospitalized):
+                            hospitalizedDead = np.random.choice(hospitalized, deathHospitalized, replace = False)
+                            dead.extend(hospitalizedDead)
+                            hospitalizedDeaths = deathHospitalized
+                        else:
+                            dead.extend([x for x in hospitalized])
+                            hospitalizedDeaths = len(hospitalized)
+                        residualDeaths -= hospitalizedDeaths
+                        
+                        # Sample deaths among symptomatic not hospitalized
+                        if residualDeaths > 0:
+                            symptomatic = [x for x in males if x.severityLevel == 2]
+                            dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                        
+                for person in dead:
+                    person.severityLevel = 5
+                    person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
+                    person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
 
         ##### Endogenous exposure: exposure from contagious agents in the population #######
         
@@ -1537,6 +1617,88 @@ class Sim:
                                 person.severityLevel = 5
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                 person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
+        
+        dead = []
+        for y in self.p['ageClasses']:
+            for i in self.p['incomeClasses']:
+                # Males
+                males = [x for x in exposedAgents if x.ageClass == y and x.incomeQuintile == i and x.sex == 'male']
+                popMales = len(males)
+                # Assign deaths to conditions
+                # deaths = int(math.ceil(float(popMales)*self.infectionFatalityRatio[y][i][0]))
+                deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][0])
+                residualDeaths = deaths
+                # Intubated
+                intubated = [x for x in males if x.severityLevel == 4]
+                deathIntubated = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                if deathIntubated < len(intubated):
+                    intubatedDead = np.random.choice(intubated, deathIntubated, replace = False)
+                    dead.extend(intubatedDead)
+                    intubatedDeaths = deathIntubated
+                else:
+                    dead.extend([x for x in intubated])
+                    intubatedDeaths = len(intubated)
+                residualDeaths -= intubatedDeaths
+                
+                # Hospitalized
+                hospitalized = [x for x in males if x.severityLevel == 3]
+                deathHospitalized = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                if deathHospitalized < len(hospitalized):
+                    hospitalizedDead = np.random.choice(hospitalized, deathHospitalized, replace = False)
+                    dead.extend(hospitalizedDead)
+                    hospitalizedDeaths = deathHospitalized
+                else:
+                    dead.extend([x for x in hospitalized])
+                    hospitalizedDeaths = len(hospitalized)
+                residualDeaths -= hospitalizedDeaths
+                
+                # Sample deaths among symptomatic not hospitalized
+                if residualDeaths > 0:
+                    symptomatic = [x for x in males if x.severityLevel == 2]
+                    dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                
+                # Feales
+                females = [x for x in exposedAgents if x.ageClass == y and x.incomeQuintile == i and x.sex == 'female']
+                popFemales = len(females)
+                # Assign deaths to conditions
+                # deaths = int(math.ceil(float(popFemales)*self.infectionFatalityRatio[y][i][1]))
+                deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][1])
+                residualDeaths = deaths
+                # Intubated
+                intubated = [x for x in males if x.severityLevel == 4]
+                deathIntubated = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                if deathIntubated < len(intubated):
+                    intubatedDead = np.random.choice(intubated, deathIntubated, replace = False)
+                    dead.extend(intubatedDead)
+                    intubatedDeaths = deathIntubated
+                else:
+                    dead.extend([x for x in intubated])
+                    intubatedDeaths = len(intubated)
+                residualDeaths -= intubatedDeaths
+                
+                # Hospitalized
+                hospitalized = [x for x in males if x.severityLevel == 3]
+                deathHospitalized = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
+                if deathHospitalized < len(hospitalized):
+                    hospitalizedDead = np.random.choice(hospitalized, deathHospitalized, replace = False)
+                    dead.extend(hospitalizedDead)
+                    hospitalizedDeaths = deathHospitalized
+                else:
+                    dead.extend([x for x in hospitalized])
+                    hospitalizedDeaths = len(hospitalized)
+                residualDeaths -= hospitalizedDeaths
+                
+                # Sample deaths among symptomatic not hospitalized
+                if residualDeaths > 0:
+                    symptomatic = [x for x in males if x.severityLevel == 2]
+                    dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                
+        for person in dead:
+            person.severityLevel = 5
+            person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
+            person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
+        
+        
         
         print 'Max Communal Infection Indexes: ' + str(max(communalInfectionIndexes))
         print 'Mean Communal Infection Indexes: ' + str(np.mean(communalInfectionIndexes))
@@ -1675,8 +1837,9 @@ class Sim:
                     self.symptomaticByClass[agent.incomeQuintile] += 1
                     self.symptomaticByAge[agent.ageClass] += 1
             elif agent.daysFromInfection == (agent.recoveryPeriod+agent.incubationPeriod):
-                self.hospitalPopulation -= 1
-                self.icuPopulation -= 1
+                if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
+                    self.hospitalPopulation -= 1
+                    self.icuPopulation -= 1
                 if agent.symptomsLevel == 'dead':
                     self.deathsByClass[agent.incomeQuintile] += 1
                     self.totDeathsByClass[agent.incomeQuintile] += 1
