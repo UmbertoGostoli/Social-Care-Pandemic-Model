@@ -38,6 +38,7 @@ class Person:
         self.haveBeenHospitalized = False
         self.inIntensiveCare = False
         self.networkInfectionFactor = 0
+        self.placeOfDeath = None
         self.aiw = 0
         self.ciw = 0
         self.adw = 0

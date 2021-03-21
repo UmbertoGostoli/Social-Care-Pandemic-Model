@@ -1435,11 +1435,9 @@ class Sim:
                                 person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                                 person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                             else:
-                                prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
-                                if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
-                                    person.severityLevel = 4
-                                    person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
-                                    person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
+                                person.severityLevel = 4
+                                person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
+                                person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                                     
                                         
                 
@@ -1483,17 +1481,20 @@ class Sim:
                         # Sample deaths among symptomatic not hospitalized
                         if residualDeaths > 0:
                             symptomatic = [x for x in males if x.severityLevel == 2]
-                            dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                            if residualDeaths < len(symptomatic):
+                                dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                            else:
+                                dead.extend([x for x in symptomatic])
                         
                         # Feales
                         females = [x for x in internationalExposed if x.ageClass == y and x.incomeQuintile == i and x.sex == 'female']
                         popFemales = len(females)
                         # Assign deaths to conditions
                         # deaths = int(math.ceil(float(popFemales)*self.infectionFatalityRatio[y][i][1]))
-                        deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][0])
+                        deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][1])
                         residualDeaths = deaths
                         # Intubated
-                        intubated = [x for x in males if x.severityLevel == 4]
+                        intubated = [x for x in females if x.severityLevel == 4]
                         deathIntubated = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
                         if deathIntubated < len(intubated):
                             intubatedDead = np.random.choice(intubated, deathIntubated, replace = False)
@@ -1505,7 +1506,7 @@ class Sim:
                         residualDeaths -= intubatedDeaths
                         
                         # Hospitalized
-                        hospitalized = [x for x in males if x.severityLevel == 3]
+                        hospitalized = [x for x in females if x.severityLevel == 3]
                         deathHospitalized = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
                         if deathHospitalized < len(hospitalized):
                             hospitalizedDead = np.random.choice(hospitalized, deathHospitalized, replace = False)
@@ -1518,10 +1519,19 @@ class Sim:
                         
                         # Sample deaths among symptomatic not hospitalized
                         if residualDeaths > 0:
-                            symptomatic = [x for x in males if x.severityLevel == 2]
-                            dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                            symptomatic = [x for x in females if x.severityLevel == 2]
+                            if residualDeaths < len(symptomatic):
+                                dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                            else:
+                                dead.extend([x for x in symptomatic])
                         
                 for person in dead:
+                    if person.severityLevel == 2:
+                        person.placeOfDeath = 'Home'
+                    elif person.severityLevel == 3:
+                        person.placeOfDeath = 'Hospital'
+                    elif person.severityLevel == 4:
+                        person.placeOfDeath = 'ICU'
                     person.severityLevel = 5
                     person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                     person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
@@ -1606,17 +1616,10 @@ class Sim:
                             person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
                             person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
                         else:
-                            prob = self.intubatedFatalityRatio[person.ageClass][person.incomeQuintile][genderIndex]
-                            if np.random.random() > prob: # self.probsDeathIntubated[person.ageClass]:
-                                # In this case, agent is not dead
-                                person.severityLevel = 4
-                                person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
-                                person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
-                            else:
-                                # In this case, agent is dead
-                                person.severityLevel = 5
-                                person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
-                                person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
+                            # In this case, agent is in icu
+                            person.severityLevel = 4
+                            person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
+                            person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
         
         dead = []
         for y in range(self.p['ageClasses']):
@@ -1655,7 +1658,10 @@ class Sim:
                 # Sample deaths among symptomatic not hospitalized
                 if residualDeaths > 0:
                     symptomatic = [x for x in males if x.severityLevel == 2]
-                    dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                    if residualDeaths < len(symptomatic):
+                        dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                    else:
+                        dead.extend([x for x in symptomatic])
                 
                 # Feales
                 females = [x for x in exposedAgents if x.ageClass == y and x.incomeQuintile == i and x.sex == 'female']
@@ -1665,7 +1671,7 @@ class Sim:
                 deaths = np.random.poisson(float(popFemales)*self.infectionFatalityRatio[y][i][1])
                 residualDeaths = deaths
                 # Intubated
-                intubated = [x for x in males if x.severityLevel == 4]
+                intubated = [x for x in females if x.severityLevel == 4]
                 deathIntubated = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
                 if deathIntubated < len(intubated):
                     intubatedDead = np.random.choice(intubated, deathIntubated, replace = False)
@@ -1677,7 +1683,7 @@ class Sim:
                 residualDeaths -= intubatedDeaths
                 
                 # Hospitalized
-                hospitalized = [x for x in males if x.severityLevel == 3]
+                hospitalized = [x for x in females if x.severityLevel == 3]
                 deathHospitalized = int(math.ceil(float(residualDeaths)*self.p['shareDeathByCondition']))
                 if deathHospitalized < len(hospitalized):
                     hospitalizedDead = np.random.choice(hospitalized, deathHospitalized, replace = False)
@@ -1690,10 +1696,19 @@ class Sim:
                 
                 # Sample deaths among symptomatic not hospitalized
                 if residualDeaths > 0:
-                    symptomatic = [x for x in males if x.severityLevel == 2]
-                    dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                    symptomatic = [x for x in females if x.severityLevel == 2]
+                    if residualDeaths < len(symptomatic):
+                        dead.extend(np.random.choice(symptomatic, residualDeaths, replace = False))
+                    else:
+                        dead.extend([x for x in symptomatic])
                 
         for person in dead:
+            if person.severityLevel == 2:
+                person.placeOfDeath = 'Home'
+            elif person.severityLevel == 3:
+                person.placeOfDeath = 'Hospital'
+            elif person.severityLevel == 4:
+                person.placeOfDeath = 'ICU'
             person.severityLevel = 5
             person.symptomsLevel = self.p['symptomsLevels'][person.severityLevel-1]
             person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
@@ -1802,24 +1817,26 @@ class Sim:
         self.newCases = 0
         for agent in infected:
             agent.daysFromInfection += 1
+            
             if agent.healthStatus == 'exposed' and agent.daysFromInfection >= (agent.incubationPeriod-self.p['preSymptomsContagiousPeriod']):
                 agent.healthStatus = 'infectious'
                 agent.hasBeenInfectious = True
+                self.totalInfected += 1
             elif agent.daysFromInfection == agent.incubationPeriod and agent.symptomsLevel != 'asymptomatic':
                 agent.symptomatic = True
-                if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
+                if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'Hospital' or agent.placeOfDeath == 'ICU':
                     self.newCases += 1
-                    self.totalInfected += 1
                     self.totalHospitalized += 1
                     self.cumulatedHospitalizations += 1
                     self.hospitalPopulation += 1
+                    self.hospitalizedByClass[agent.incomeQuintile] += 1
+                    self.totalHospitalizedByClass[agent.incomeQuintile] += 1
+                    self.hospitalizedByAge[agent.ageClass] += 1
+                    
                     if self.periodFirstHospitalized == -1:
                         self.periodFirstHospitalized = day
-                    if agent.symptomsLevel == 'severe':
-                        self.hospitalizedByClass[agent.incomeQuintile] += 1
-                        self.totalHospitalizedByClass[agent.incomeQuintile] += 1
-                        self.hospitalizedByAge[agent.ageClass] += 1
-                    else:
+                        
+                    if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU':
                         self.cumulatedICUs += 1
                         self.icuPopulation += 1
                         self.intubatedByClass[agent.incomeQuintile] += 1
@@ -1829,7 +1846,7 @@ class Sim:
                     agent.haveBeenHospitalized = True
                     agent.workingShare = 0.0
                     agent.testPositive = True
-                    if agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
+                    if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU':
                         if self.periodFirstIntubated == -1:
                             self.periodFirstIntubated = day
                         agent.inIntensiveCare = True
@@ -1837,9 +1854,10 @@ class Sim:
                     self.symptomaticByClass[agent.incomeQuintile] += 1
                     self.symptomaticByAge[agent.ageClass] += 1
             elif agent.daysFromInfection == (agent.recoveryPeriod+agent.incubationPeriod):
-                if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.symptomsLevel == 'dead':
+                if agent.symptomsLevel == 'severe' or agent.placeOfDeath == 'Hospital':
                     self.hospitalPopulation -= 1
-                    self.icuPopulation -= 1
+                    if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU': 
+                        self.icuPopulation -= 1
                 if agent.symptomsLevel == 'dead':
                     self.deathsByClass[agent.incomeQuintile] += 1
                     self.totDeathsByClass[agent.incomeQuintile] += 1
@@ -2151,10 +2169,21 @@ class Sim:
             probClassAgeF = []
             probClassAgeR = []
             baseProbS = self.p['probSymptomatic'][i]/den
-            baseProbH = self.p['probsHospitalization'][i]/den
-            baseProbI = self.p['probsIntensiveCare'][i]/den
+            
+            # baseProbH = self.p['probsHospitalization'][i]/den
+            probHosp = 1.0 - np.exp(-1*self.p['betaHosp']*np.power((i+1), self.p['alphaHosp']))
+            baseProbH = probHosp/den
+            
+            # baseProbI = self.p['probsIntensiveCare'][i]/den
+            probICU = 1.0 - np.exp(-1*self.p['betaICU']*np.power((i+1), self.p['alphaICU']))
+            baseProbI = probICU/den
+            
             baseProbF = self.probsDeathIntubated[i]/den
-            baseProbR = (self.p['infectionFatalityRatio'][i]/100.0)/den
+            
+            # baseProbR = (self.p['infectionFatalityRatio'][i]/100.0)/den
+            probR = 1.0 - np.exp(-1*self.p['betaIFR']*np.power((i+1), self.p['alphaIFR']))
+            baseProbR = probR/den
+            
             for j in range(int(self.p['incomeClasses'])):
                 classProbS = baseProbS*math.pow(self.p['severityClassBias'], j)
                 classProbH = baseProbH*math.pow(self.p['severityClassBias'], j)
