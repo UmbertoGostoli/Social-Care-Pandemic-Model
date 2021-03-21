@@ -1,4 +1,4 @@
-combinationKey,betaHosp,alphaHosp,betaICU,alphaICU,betaIFR,alphaICU
+combinationKey,betaHosp,alphaHosp,betaICU,alphaICU,betaIFR,alphaIFR
 1,0.001055,2.335,6.95E-06,6.095,1.31E-07,6.095
 ,0.000925,2.395,5.45E-06,5.825,1.43E-07,5.825
 ,0.001015,2.245,5.65E-06,6.045,1.07E-07,6.045
