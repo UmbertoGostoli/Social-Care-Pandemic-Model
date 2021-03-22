@@ -1445,8 +1445,8 @@ class Sim:
                 # = to numerosity*probability.
                 # Then, assign deaths to symptomatic, hospitalized only and intubated, with increasing proportion (i.e. 0.1, 0.25, 0.65)
                 dead = []
-                for y in range(self.p['ageClasses']):
-                    for i in range(self.p['incomeClasses']):
+                for y in range(int(self.p['ageClasses'])):
+                    for i in range(int(self.p['incomeClasses'])):
                         # Males
                         males = [x for x in internationalExposed if x.ageClass == y and x.incomeQuintile == i and x.sex == 'male']
                         popMales = len(males)
@@ -1622,8 +1622,8 @@ class Sim:
                             person.recoveryPeriod = np.random.choice(self.recoveryPeriods[person.severityLevel-1])
         
         dead = []
-        for y in range(self.p['ageClasses']):
-            for i in range(self.p['incomeClasses']):
+        for y in range(int(self.p['ageClasses'])):
+            for i in range(int(self.p['incomeClasses'])):
                 # Males
                 males = [x for x in exposedAgents if x.ageClass == y and x.incomeQuintile == i and x.sex == 'male']
                 popMales = len(males)
@@ -1856,8 +1856,8 @@ class Sim:
             elif agent.daysFromInfection == (agent.recoveryPeriod+agent.incubationPeriod):
                 if agent.symptomsLevel == 'severe' or agent.placeOfDeath == 'Hospital':
                     self.hospitalPopulation -= 1
-                    if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU': 
-                        self.icuPopulation -= 1
+                if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU': 
+                    self.icuPopulation -= 1
                 if agent.symptomsLevel == 'dead':
                     self.deathsByClass[agent.incomeQuintile] += 1
                     self.totDeathsByClass[agent.incomeQuintile] += 1
