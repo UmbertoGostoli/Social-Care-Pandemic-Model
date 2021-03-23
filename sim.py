@@ -1854,10 +1854,10 @@ class Sim:
                     self.symptomaticByClass[agent.incomeQuintile] += 1
                     self.symptomaticByAge[agent.ageClass] += 1
             elif agent.daysFromInfection == (agent.recoveryPeriod+agent.incubationPeriod):
-                if agent.symptomsLevel == 'severe' or agent.placeOfDeath == 'Hospital':
+                if agent.symptomsLevel == 'severe' or agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'Hospital' or agent.placeOfDeath == 'ICU':
                     self.hospitalPopulation -= 1
-                if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU': 
-                    self.icuPopulation -= 1
+                    if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU': 
+                        self.icuPopulation -= 1
                 if agent.symptomsLevel == 'dead':
                     self.deathsByClass[agent.incomeQuintile] += 1
                     self.totDeathsByClass[agent.incomeQuintile] += 1
