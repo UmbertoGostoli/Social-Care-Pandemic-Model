@@ -400,6 +400,7 @@ def init_params():
     p['beta'] = 0.5
     # Two betas
     p['betaCommunity'] = 0.02 # 0.02
+    p['elderlyBetaIncrement'] = 0.04
     p['betaRandom'] = 0.5
     p['betaHousehold'] = 0.2 # 0.2
     p['betaCare'] = 0.2 # 0.2
@@ -500,15 +501,15 @@ def init_params():
     p['preSymptomsContagiousPeriod'] = 2
     p['symptomsLevels'] = ['asymptomatic', 'mild', 'severe', 'critical', 'dead']
     p['symptomsProbabilities'] = [0.3, 0.5, 0.15, 0.04, 0.01]
-    p['probSymptomatic'] = [0.67, 0.7, 0.72, 0.74, 0.77, 0.79, 0.82, 0.86, 0.9]
+    p['probSymptomatic'] = [0.67, 0.7, 0.72, 0.74, 0.77, 0.79, 0.82, 0.86, 0.9] # [0.67, 0.7, 0.72, 0.74, 0.77, 0.79, 0.82, 0.86, 0.9]
     
     # Transition rates parameters
-    p['betaHosp'] = 0.0008
+    p['betaHosp'] = 0.001
     p['alphaHosp'] = 2.5
     p['betaICU'] = 0.000008
-    p['alphaICU'] = 5.0
-    p['betaIFR'] = 0.0000001
-    p['alphaIFR'] = 6.0
+    p['alphaICU'] = 5.4
+    p['betaIFR'] = 0.00000006
+    p['alphaIFR'] = 6.5
     
     # Explicit age-based transition rates
     p['probsHospitalization'] = [0.002, 0.005, 0.02, 0.04, 0.06, 0.09, 0.14, 0.24, 0.3] # [0.005, 0.02, 0.06, 0.18, 0.26, 0.33, 0.39, 0.44, 0.48]
