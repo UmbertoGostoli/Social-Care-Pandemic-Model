@@ -455,39 +455,54 @@ class Sim:
                     print self.year
               
                     self.doOneYear(policyFolder, dataMapFolder, dataHouseholdFolder, self.year)
-                    
+
+                self.socialNetworks()
+                
                 if self.p['saveSim'] == True:  # If the simualtion needs to be saved at the end of the yearly-cicle sim
                     fromAgentsToIDs = True
                     self.from_Agents_to_IDs()
                     pickle.dump(self.pop, open('save.p', 'wb'))
                     pickle.dump(self.map, open('save.m', 'wb'))
+                    pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))
                     
                     
             else:  # In this case, a saved simulation is uploaded
                 print 'Loading base simulation.....'
                 self.pop = pickle.load(open('save.p', 'rb'))
                 self.map = pickle.load(open('save.m', 'rb'))
+                self.classContactsMatrix = pickle.load(open('save.cm', 'rb'))
                 
-            # This gets executed if the simulation is saved and uploaded in the SAME run
             if fromAgentsToIDs == True or self.p['loadSim'] == True:
-                self.from_IDs_to_Agents()
-            # if self.p['loadSim'] == True:
+                self.from_IDs_to_Agents()   
+                fromAgentsToIDs = False
             
+            if self.p['loadSim'] == True:
+                if self.p['loadNetwork'] == False:
+                    self.socialNetworks()
+                    if self.p['saveNetwork'] == True:
+                        self.from_Agents_to_IDs()
+                        pickle.dump(self.pop, open('save.p', 'wb'))
+                        pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))
+                        self.from_IDs_to_Agents()
+          
             # Display
             self.displayHouse = self.pop.allPeople[0].house
             self.displayHouse.display = True
             self.nextDisplayHouse = None
             
+            
             # The agents' ago-networks may be created anew un case of population uploaded from files
             if self.p['loadNetwork'] == False or self.p['loadSim'] == False:
                 self.socialNetworks()
-                pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))
+                
                 self.from_Agents_to_IDs()
+                fromAgentsToIDs = True
                 pickle.dump(self.pop, open('save.p', 'wb'))
             else:
                 self.pop = pickle.load(open('save.p', 'rb'))
-                self.from_IDs_to_Agents()
                 self.classContactsMatrix = pickle.load(open('save.cm', 'rb'))
+            
+            self.from_IDs_to_Agents()
            
             
             self.setPandemicWeights()
@@ -1160,7 +1175,7 @@ class Sim:
         
         
         for i in range(ageClasses):
-            if i < 10:
+            if i <= 10:
                 for j in range(ageClasses):
                     if j == 11 or j == 12:
                         contactsByAge[i][j] *= 1.3
