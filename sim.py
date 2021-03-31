@@ -489,20 +489,7 @@ class Sim:
             self.displayHouse = self.pop.allPeople[0].house
             self.displayHouse.display = True
             self.nextDisplayHouse = None
-            
-            
-            # The agents' ago-networks may be created anew un case of population uploaded from files
-            if self.p['loadNetwork'] == False or self.p['loadSim'] == False:
-                self.socialNetworks()
-                
-                self.from_Agents_to_IDs()
-                fromAgentsToIDs = True
-                pickle.dump(self.pop, open('save.p', 'wb'))
-            else:
-                self.pop = pickle.load(open('save.p', 'rb'))
-                self.classContactsMatrix = pickle.load(open('save.cm', 'rb'))
-            
-            self.from_IDs_to_Agents()
+           
            
             
             self.setPandemicWeights()
