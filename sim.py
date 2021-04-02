@@ -2307,23 +2307,23 @@ class Sim:
             
         
             
-        print 'Share of 1/11-year-old hospitalized: ' + str(shareHospitalized1To11) + ' (2.5)'
-        print 'Share of 12/18-year-old hospitalized: ' + str(shareHospitalized12To18) + ' (1.5)'
-        print 'Share of 19/39-year-old hospitalized: ' + str(shareHospitalized19To39) + ' (1.9)'
-        print 'Share of 40/64-year-old hospitalized: ' + str(shareHospitalized40To64) + ' (5.4)'
-        print 'Share of over 65 hospitalized: ' + str(shareHospitalizedOver65) + ' (23.3)'
+        print 'Share of 1/11-year-old hospitalized: ' + str(self.shareHospitalized1To11) + ' (2.5)'
+        print 'Share of 12/18-year-old hospitalized: ' + str(self.shareHospitalized12To18) + ' (1.5)'
+        print 'Share of 19/39-year-old hospitalized: ' + str(self.shareHospitalized19To39) + ' (1.9)'
+        print 'Share of 40/64-year-old hospitalized: ' + str(self.shareHospitalized40To64) + ' (5.4)'
+        print 'Share of over 65 hospitalized: ' + str(self.shareHospitalizedOver65) + ' (23.3)'
         
-        print 'Share of 1/11-year-old intubated: ' + str(shareIntubated1To11) + ' (0.09)'
-        print 'Share of 12/18-year-old intubated: ' + str(shareIntubated12To18) + ' (0.06)'
-        print 'Share of 19/39-year-old intubated: ' + str(shareIntubated19To39) + ' (0.09)'
-        print 'Share of 40/64-year-old intubated: ' + str(shareIntubated40To64) + ' (0.67)'
-        print 'Share of over 65 intubated: ' + str(shareIntubatedOver65) + ' (3.32)'
+        print 'Share of 1/11-year-old intubated: ' + str(self.shareIntubated1To11) + ' (0.09)'
+        print 'Share of 12/18-year-old intubated: ' + str(self.shareIntubated12To18) + ' (0.06)'
+        print 'Share of 19/39-year-old intubated: ' + str(self.shareIntubated19To39) + ' (0.09)'
+        print 'Share of 40/64-year-old intubated: ' + str(self.shareIntubated40To64) + ' (0.67)'
+        print 'Share of over 65 intubated: ' + str(self.shareIntubatedOver65) + ' (3.32)'
         print ''
-        print 'Share of 1/11-year-old dead: ' + str(shareDeaths1To11) + ' (0.01)'
-        print 'Share of 12/18-year-old dead: ' + str(shareDeaths12To18) + ' (0.02)'
-        print 'Share of 19/39-year-old dead: ' + str(shareDeaths19To39) + ' (0.02)'
-        print 'Share of 40/64-year-old dead: ' + str(shareDeaths40To64) + ' (0.24)'
-        print 'Share of over 65 dead: ' + str(shareDeathsOver65) + ' (6.31)'
+        print 'Share of 1/11-year-old dead: ' + str(self.shareDeaths1To11) + ' (0.01)'
+        print 'Share of 12/18-year-old dead: ' + str(self.shareDeaths12To18) + ' (0.02)'
+        print 'Share of 19/39-year-old dead: ' + str(self.shareDeaths19To39) + ' (0.02)'
+        print 'Share of 40/64-year-old dead: ' + str(self.shareDeaths40To64) + ' (0.24)'
+        print 'Share of over 65 dead: ' + str(self.shareDeathsOver65) + ' (6.31)'
         print ''
         
         self.Age1To11Share_H = 0
