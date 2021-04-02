@@ -99,7 +99,13 @@ class Sim:
                         'informalCareRatio', 'careNeedRatio', 'minIsolationRate', 'maxIsolationRate', 'meanIsolationRate',
                         'mobilityReduction_Q1', 'mobilityReduction_Q2', 'mobilityReduction_Q3', 'mobilityReduction_Q4', 'mobilityReduction_Q5',
                         'mobilityReduction_A1', 'mobilityReduction_A2', 'mobilityReduction_A3', 'mobilityReduction_A4', 'mobilityReduction_A5',
-                        'mobilityReduction_A6', 'mobilityReduction_A7', 'mobilityReduction_A8', 'mobilityReduction_A9']
+                        'mobilityReduction_A6', 'mobilityReduction_A7', 'mobilityReduction_A8', 'mobilityReduction_A9',
+                        'shareHospitalized1To11', 'shareHospitalized12To18', 'shareHospitalized19To39', 'shareHospitalized40To64',
+                        'shareHospitalizedOver65', 'shareIntubated1To11', 'shareIntubated12To18', 'shareIntubated19To39',
+                        'shareIntubated40To64', 'shareIntubatedOver65', 'shareDeaths1To11', 'shareDeaths12To18', 'shareDeaths19To39',
+                        'shareDeaths40To64', 'shareDeathsOver65', 'Age1To11Share_H', 'Age12To18Share_H', 'Age19To39Share_H',
+                        'Age40To64Share_H', 'Over65Share_H', 'Age1To11Share_I', 'Age12To18Share_I', 'Age19To39Share_I',
+                        'Age40To64Share_I', 'Over65Share_I']
         
         
         self.outputData = pd.DataFrame()
@@ -489,7 +495,6 @@ class Sim:
             self.displayHouse = self.pop.allPeople[0].house
             self.displayHouse.display = True
             self.nextDisplayHouse = None
-           
            
             
             self.setPandemicWeights()
@@ -1162,22 +1167,22 @@ class Sim:
         
         
         for i in range(ageClasses):
-            if i <= 10:
+            if i <= 9:
                 for j in range(ageClasses):
-                    if j == 11 or j == 12:
-                        contactsByAge[i][j] *= 1.3
+                    if j == 10 or j == 11 or j == 12:
+                        contactsByAge[i][j] *= 1.2
                     elif j > 12:
-                        contactsByAge[i][j] *= 2.5
+                        contactsByAge[i][j] *= 1.8
             else:
-                if i == 11 or i == 12:
+                if i == 10 or i == 11 or i == 12:
                     for j in range(ageClasses):
                         if j <= 12:
-                            contactsByAge[i][j] *= 1.3
+                            contactsByAge[i][j] *= 1.2
                         elif j > 12:
-                            contactsByAge[i][j] *= 2.5
+                            contactsByAge[i][j] *= 1.8
                 elif i > 12:
                     for j in range(ageClasses):
-                        contactsByAge[i][j] *= 2.5
+                        contactsByAge[i][j] *= 1.8
             
         self.classContactsMatrix = []
         # Introducing contact increment to increase contacts in older people ##
@@ -2241,6 +2246,12 @@ class Sim:
                     agent.viralLoad = 0
                 noMoreInfectious += 1
       
+        
+        totalHospitalized = self.hospitalized1To11+self.hospitalized12To18+self.hospitalized19To39+self.hospitalized40To64+self.hospitalizedOver65
+        totIntubated = self.icu1To11+self.icu12To18+self.icu19To39+self.icu40To64+self.icuOver65
+        print 'Total hospitalized: ' + str(totalHospitalized)
+        print 'Total intubated: ' + str(totIntubated)
+        print 'Total infected: ' + str(self.totalInfected)
         if self.totalInfected > 0:
             print ''
             print 'Share of 1/11-year-old infected: ' + str(100*float(self.infected1To11)/float(self.totalInfected)) + ' (5.5)'
@@ -2248,55 +2259,109 @@ class Sim:
             print 'Share of 19/39-year-old infected: ' + str(100*float(self.infected19To39)/float(self.totalInfected)) + ' (31.0)'
             print 'Share of 40/64-year-old infected: ' + str(100*float(self.infected40To64)/float(self.totalInfected)) + ' (39.4)'
             print 'Share of over 65 infected: ' + str(100*float(self.infectedOver65)/float(self.totalInfected)) + ' (16.7)'
-            
-            totalHopsitalized = self.hospitalized1To11+self.hospitalized12To18+self.hospitalized19To39+self.hospitalized40To64+self.hospitalizedOver65
-            
-            print 'Total hospitalized: ' + str(totalHopsitalized)
-            print 'Total infected: ' + str(self.totalInfected)
-            print 'Ratio hospitalized/infected: ' + str(100*float(totalHopsitalized)/float(self.totalInfected)) + ' (6.71)'
-            
+            print 'Ratio hospitalized/infected: ' + str(100*float(totalHospitalized)/float(self.totalInfected)) + ' (6.71)'
             
             print ''
-            print 'Share of 1/11-year-old hospitalized: ' + str(100*float(self.hospitalized1To11)/float(self.totalInfected)) + ' (2.5)'
-            print 'Share of 12/18-year-old hospitalized: ' + str(100*float(self.hospitalized12To18)/float(self.totalInfected)) + ' (1.5)'
-            print 'Share of 19/39-year-old hospitalized: ' + str(100*float(self.hospitalized19To39)/float(self.totalInfected)) + ' (1.9)'
-            print 'Share of 40/64-year-old hospitalized: ' + str(100*float(self.hospitalized40To64)/float(self.totalInfected)) + ' (5.4)'
-            print 'Share of over 65 hospitalized: ' + str(100*float(self.hospitalizedOver65)/float(self.totalInfected)) + ' (23.3)'
-            print ''
-            print 'Share of 1/11-year-old severe: ' + str(100*float(self.severe1To11)/float(self.totalInfected)) + ' (2.5)'
-            print 'Share of 12/18-year-old severe: ' + str(100*float(self.severe12To18)/float(self.totalInfected)) + ' (1.5)'
-            print 'Share of 19/39-year-old severe: ' + str(100*float(self.severe19To39)/float(self.totalInfected)) + ' (1.9)'
-            print 'Share of 40/64-year-old severe: ' + str(100*float(self.severe40To64)/float(self.totalInfected)) + ' (5.4)'
-            print 'Share of over 65 severe: ' + str(100*float(self.severeOver65)/float(self.totalInfected)) + ' (23.3)'
-            print ''
-            print 'Share of 1/11-year-old intubated: ' + str(100*float(self.icu1To11)/float(self.totalInfected)) + ' (0.09)'
-            print 'Share of 12/18-year-old intubated: ' + str(100*float(self.icu12To18)/float(self.totalInfected)) + ' (0.06)'
-            print 'Share of 19/39-year-old intubated: ' + str(100*float(self.icu19To39)/float(self.totalInfected)) + ' (0.09)'
-            print 'Share of 40/64-year-old intubated: ' + str(100*float(self.icu40To64)/float(self.totalInfected)) + ' (0.67)'
-            print 'Share of over 65 intubated: ' + str(100*float(self.icuOver65)/float(self.totalInfected)) + ' (3.32)'
-            print ''
-            print 'Share of 1/11-year-old dead: ' + str(100*float(self.dead1To11)/float(self.totalInfected)) + ' (0.01)'
-            print 'Share of 12/18-year-old dead: ' + str(100*float(self.dead12To18)/float(self.totalInfected)) + ' (0.02)'
-            print 'Share of 19/39-year-old dead: ' + str(100*float(self.dead19To39)/float(self.totalInfected)) + ' (0.02)'
-            print 'Share of 40/64-year-old dead: ' + str(100*float(self.dead40To64)/float(self.totalInfected)) + ' (0.24)'
-            print 'Share of over 65 dead: ' + str(100*float(self.deadOver65)/float(self.totalInfected)) + ' (6.31)'
-            print ''
-        if self.cumulatedHospitalizations > 0:
-            print 'Share of 1/11-year-old hospitalized: ' + str(100*float(self.hospitalized1To11)/float(self.cumulatedHospitalizations)) + ' (0.8)'
-            print 'Share of 12/18-year-old hospitalized: ' + str(100*float(self.hospitalized12To18)/float(self.cumulatedHospitalizations)) + ' (0.9)'
-            print 'Share of 19/39-year-old hospitalized: ' + str(100*float(self.hospitalized19To39)/float(self.cumulatedHospitalizations)) + ' (9.0)'
-            print 'Share of 40/64-year-old hospitalized: ' + str(100*float(self.hospitalized40To64)/float(self.cumulatedHospitalizations)) + ' (31.5)'
-            print 'Share of over 65 hospitalized: ' + str(100*float(self.hospitalizedOver65)/float(self.cumulatedHospitalizations)) + ' (57.9)'
-            print ''
-        if self.cumulatedICUs > 0:
-            print 'Share of 1/11-year-old intubated: ' + str(100*float(self.icu1To11)/float(self.cumulatedICUs)) + ' (0.2)'
-            print 'Share of 12/18-year-old intubated: ' + str(100*float(self.icu12To18)/float(self.cumulatedICUs)) + ' (0.3)'
-            print 'Share of 19/39-year-old intubated: ' + str(100*float(self.icu19To39)/float(self.cumulatedICUs)) + ' (3.4)'
-            print 'Share of 40/64-year-old intubated: ' + str(100*float(self.icu40To64)/float(self.cumulatedICUs)) + ' (31.0)'
-            print 'Share of over 65 intubated: ' + str(100*float(self.icuOver65)/float(self.cumulatedICUs)) + ' (65.0)'
-            print ''
+        
+        self.shareHospitalized1To11 = 0 
+        self.shareIntubated1To11 = 0
+        self.shareDeaths1To11 = 0
+        if self.infected1To11 > 0:
+            self.shareHospitalized1To11 = 100*float(self.hospitalized1To11)/float(self.infected1To11)
+            self.shareIntubated1To11 = 100*float(self.icu1To11)/float(self.infected1To11)
+            self.shareDeaths1To11 = 100*float(self.dead1To11)/float(self.infected1To11)
+        
+        self.shareHospitalized12To18 = 0 
+        self.shareIntubated12To18 = 0
+        self.shareDeaths12To18 = 0
+        if self.infected12To18 > 0:
+            self.shareHospitalized12To18 = 100*float(self.hospitalized12To18)/float(self.infected12To18)
+            self.shareIntubated12To18 = 100*float(self.icu12To18)/float(self.infected12To18)
+            self.shareDeaths12To18 = 100*float(self.dead12To18)/float(self.infected12To18)
+        
+        self.shareHospitalized19To39 = 0 
+        self.shareIntubated19To39 = 0
+        self.shareDeaths19To39 = 0
+        if self.infected19To39 > 0:
+            self.shareHospitalized19To39 = 100*float(self.hospitalized19To39)/float(self.infected19To39)
+            self.shareIntubated19To39 = 100*float(self.icu19To39)/float(self.infected19To39)
+            self.shareDeaths19To39 = 100*float(self.dead19To39)/float(self.infected19To39)
             
+        self.shareHospitalized40To64 = 0 
+        self.shareIntubated40To64 = 0
+        self.shareDeaths40To64 = 0
+        if self.infected40To64 > 0:
+            self.shareHospitalized40To64 = 100*float(self.hospitalized40To64)/float(self.infected40To64)
+            self.shareIntubated40To64 = 100*float(self.icu40To64)/float(self.infected40To64)
+            self.shareDeaths40To64 = 100*float(self.dead40To64)/float(self.infected40To64)
             
+        self.shareHospitalizedOver65 = 0 
+        self.shareIntubatedOver65 = 0
+        self.shareDeathsOver65 = 0
+        if self.infectedOver65 > 0:
+            self.shareHospitalizedOver65 = 100*float(self.hospitalizedOver65)/float(self.infectedOver65)
+            self.shareIntubatedOver65 = 100*float(self.icuOver65)/float(self.infectedOver65)
+            self.shareDeathsOver65 = 100*float(self.deadOver65)/float(self.infectedOver65)
+            
+        
+            
+        print 'Share of 1/11-year-old hospitalized: ' + str(shareHospitalized1To11) + ' (2.5)'
+        print 'Share of 12/18-year-old hospitalized: ' + str(shareHospitalized12To18) + ' (1.5)'
+        print 'Share of 19/39-year-old hospitalized: ' + str(shareHospitalized19To39) + ' (1.9)'
+        print 'Share of 40/64-year-old hospitalized: ' + str(shareHospitalized40To64) + ' (5.4)'
+        print 'Share of over 65 hospitalized: ' + str(shareHospitalizedOver65) + ' (23.3)'
+        
+        print 'Share of 1/11-year-old intubated: ' + str(shareIntubated1To11) + ' (0.09)'
+        print 'Share of 12/18-year-old intubated: ' + str(shareIntubated12To18) + ' (0.06)'
+        print 'Share of 19/39-year-old intubated: ' + str(shareIntubated19To39) + ' (0.09)'
+        print 'Share of 40/64-year-old intubated: ' + str(shareIntubated40To64) + ' (0.67)'
+        print 'Share of over 65 intubated: ' + str(shareIntubatedOver65) + ' (3.32)'
+        print ''
+        print 'Share of 1/11-year-old dead: ' + str(shareDeaths1To11) + ' (0.01)'
+        print 'Share of 12/18-year-old dead: ' + str(shareDeaths12To18) + ' (0.02)'
+        print 'Share of 19/39-year-old dead: ' + str(shareDeaths19To39) + ' (0.02)'
+        print 'Share of 40/64-year-old dead: ' + str(shareDeaths40To64) + ' (0.24)'
+        print 'Share of over 65 dead: ' + str(shareDeathsOver65) + ' (6.31)'
+        print ''
+        
+        self.Age1To11Share_H = 0
+        self.Age12To18Share_H = 0
+        self.Age19To39Share_H = 0
+        self.Age40To64Share_H = 0
+        self.Over65Share_H = 0
+        if totalHospitalized > 0:
+            self.Age1To11Share_H = 100*float(self.hospitalized1To11)/float(totalHospitalized)
+            self.Age12To18Share_H = 100*float(self.hospitalized12To18)/float(totalHospitalized)
+            self.Age19To39Share_H = 100*float(self.hospitalized19To39)/float(totalHospitalized)
+            self.Age40To64Share_H = 100*float(self.hospitalized40To64)/float(totalHospitalized)
+            self.Over65Share_H = 100*float(self.hospitalizedOver65)/float(totalHospitalized)
+            
+        print 'Share of 1/11-year-old hospitalized: ' + str(self.Age1To11Share_H) + ' (0.8)'
+        print 'Share of 12/18-year-old hospitalized: ' + str(self.Age12To18Share_H) + ' (0.9)'
+        print 'Share of 19/39-year-old hospitalized: ' + str(self.Age19To39Share_H) + ' (9.0)'
+        print 'Share of 40/64-year-old hospitalized: ' + str(self.Age40To64Share_H) + ' (31.5)'
+        print 'Share of over 65 hospitalized: ' + str(self.Over65Share_H) + ' (57.9)'
+        print ''
+        
+        self.Age1To11Share_I = 0
+        self.Age12To18Share_I = 0
+        self.Age19To39Share_I = 0
+        self.Age40To64Share_I = 0
+        self.Over65Share_I = 0
+        if totIntubated > 0:
+            self.Age1To11Share_I = 100*float(self.icu1To11)/float(totIntubated)
+            self.Age12To18Share_I = 100*float(self.icu12To18)/float(totIntubated)
+            self.Age19To39Share_I = 100*float(self.icu19To39)/float(totIntubated)
+            self.Age40To64Share_I = 100*float(self.icu40To64)/float(totIntubated)
+            self.Over65Share_I = 100*float(self.icuOver65)/float(totIntubated)
+            
+        print 'Share of 1/11-year-old intubated: ' + str(self.Age1To11Share_I) + ' (0.2)'
+        print 'Share of 12/18-year-old intubated: ' + str(self.Age12To18Share_I) + ' (0.3)'
+        print 'Share of 19/39-year-old intubated: ' + str(self.Age19To39Share_I) + ' (3.4)'
+        print 'Share of 40/64-year-old intubated: ' + str(self.Age40To64Share_I) + ' (31.0)'
+        print 'Share of over 65 intubated: ' + str(self.Over65Share_I) + ' (65.0)'
+        print ''
+    
         totDeaths = sum(self.deathsByAge)
         
         totIntubated = sum(self.intubatedByAge)
@@ -8768,7 +8833,13 @@ class Sim:
                    informalCareRatio, careNeedRatio, self.minIsolationRate, self.maxIsolationRate, self.meanIsolationRate, self.mobilityReduction_Q1,
                    self.mobilityReduction_Q2, self.mobilityReduction_Q3, self.mobilityReduction_Q4, self.mobilityReduction_Q5, self.mobilityReduction_A1,
                    self.mobilityReduction_A2, self.mobilityReduction_A3, self.mobilityReduction_A4, self.mobilityReduction_A5, self.mobilityReduction_A6,
-                   self.mobilityReduction_A7, self.mobilityReduction_A8, self.mobilityReduction_A9]
+                   self.mobilityReduction_A7, self.mobilityReduction_A8, self.mobilityReduction_A9,
+                   self.shareHospitalized1To11, self.shareHospitalized12To18, self.shareHospitalized19To39, self.shareHospitalized40To64,
+                   self.shareHospitalizedOver65, self.shareIntubated1To11, self.shareIntubated12To18, self.shareIntubated19To39,
+                   self.shareIntubated40To64, self.shareIntubatedOver65, self.shareDeaths1To11, self.shareDeaths12To18, self.shareDeaths19To39,
+                   self.shareDeaths40To64, self.shareDeathsOver65, self.Age1To11Share_H, self.Age12To18Share_H, self.Age19To39Share_H,
+                   self.Age40To64Share_H, self.Over65Share_H, self.Age1To11Share_I, self.Age12To18Share_I, self.Age19To39Share_I,
+                   self.Age40To64Share_I, self.Over65Share_I]
         
         dataMapFile = 'DataMap_' + str(self.year) + '.csv'
         if not os.path.exists(dataMapFolder):
