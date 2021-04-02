@@ -1789,8 +1789,10 @@ class Sim:
 
             # Compute probability of infection
             socialBeta = self.p['betaCommunity']
-            if person.age >= 65:
-                socialBeta *= self.p['elderlyBetaIncrement']
+            if person.age >= 65 and person.age < 80: 
+                socialBeta *= self.p['beta65To79Increment']
+            if person.age >= 80:
+                socialBeta *= self.p['beta80PlusIncrement']
             communalInfectionIndex = self.p['betaCommunity']*person.communalRiskFactor
             # randomInfectionIndex = self.p['betaRandom']*person.randomRiskFactor
             householdInfectionIndex = self.p['betaHousehold']*person.domesticRiskFactor
