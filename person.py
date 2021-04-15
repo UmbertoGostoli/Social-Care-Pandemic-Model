@@ -28,7 +28,7 @@ class Person:
         self.mildConditionIndex = 0
         self.daysFromInfection = 0
         self.incubationPeriod = -1
-        self.symptomsLevel = -1
+        self.symptomsLevel = None
         self.recoveryPeriod = -1
         self.workingShare = 1.0
         self.symptomatic = False
@@ -38,6 +38,7 @@ class Person:
         self.haveBeenHospitalized = False
         self.inIntensiveCare = False
         self.networkInfectionFactor = 0
+        self.placeOfDeath = None
         self.aiw = 0
         self.ciw = 0
         self.adw = 0
