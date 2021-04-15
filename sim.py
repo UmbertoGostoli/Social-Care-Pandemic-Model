@@ -472,6 +472,7 @@ class Sim:
                     pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))
                     
                     
+                    
             else:  # In this case, a saved simulation is uploaded
                 print 'Loading base simulation.....'
                 self.pop = pickle.load(open('save.p', 'rb'))
@@ -1167,22 +1168,13 @@ class Sim:
         
         
         for i in range(ageClasses):
-            if i <= 9:
+            if i <= 12:
                 for j in range(ageClasses):
-                    if j == 10 or j == 11 or j == 12:
-                        contactsByAge[i][j] *= 1.2
-                    elif j > 12:
-                        contactsByAge[i][j] *= 1.8
+                    if j > 12:
+                        contactsByAge[i][j] *= 2.0
             else:
-                if i == 10 or i == 11 or i == 12:
-                    for j in range(ageClasses):
-                        if j <= 12:
-                            contactsByAge[i][j] *= 1.2
-                        elif j > 12:
-                            contactsByAge[i][j] *= 1.8
-                elif i > 12:
-                    for j in range(ageClasses):
-                        contactsByAge[i][j] *= 1.8
+                for j in range(ageClasses):
+                    contactsByAge[i][j] *= 2.0
             
         self.classContactsMatrix = []
         # Introducing contact increment to increase contacts in older people ##
@@ -1448,6 +1440,7 @@ class Sim:
             agent.dailyContacts = []
             agent.randomContacts = []
             # 1 - Get daily contacts
+            agent.numContacts = 0
             friends = [x for x in agent.socialContacts.nodes() if x != agent and x.dead == False and x.hospitalized == False and (agent.socialContacts[agent][x]['weight']*x.contactReductionRate) > 0]
             if len(friends) > 0:
                 quintile = agent.incomeQuintile
@@ -1789,9 +1782,13 @@ class Sim:
 
             # Compute probability of infection
             socialBeta = self.p['betaCommunity']
-            if person.age >= 65 and person.age < 80: 
-                socialBeta *= self.p['beta65To79Increment']
-            if person.age >= 80:
+            if person.age <= 30:
+                socialBeta *= self.p['betaLessThan31']
+            if person.age > 30 and person.age <=60:
+                socialBeta *= self.p['beta30To60Increment']
+            elif person.age >= 70 and person.age < 80: 
+                socialBeta *= self.p['beta70To79Increment']
+            elif person.age >= 80:
                 socialBeta *= self.p['beta80PlusIncrement']
             communalInfectionIndex = self.p['betaCommunity']*person.communalRiskFactor
             # randomInfectionIndex = self.p['betaRandom']*person.randomRiskFactor
@@ -2659,7 +2656,7 @@ class Sim:
             baseProbS = self.p['probSymptomatic'][i]/den
             
             # baseProbH = self.p['probsHospitalization'][i]/den
-            probHosp = 1.0 - np.exp(-1*self.p['betaHosp']*np.power((i+1), self.p['alphaHosp']))
+            probHosp = 1.0 - np.exp(-1*self.p['betaHosp']*np.power((i+1), self.p['alphaHosp'])-self.p['tetaHosp'])
             baseProbH = probHosp/den
             
             # baseProbI = self.p['probsIntensiveCare'][i]/den
@@ -2726,63 +2723,63 @@ class Sim:
             ageShares.extend(shares)
             
         # 9-classes contacts matrix
-        newMatrix = []
-        for i in range(self.contacts.shape[1]):
-            newColumn = []
-            col = list(self.contacts[i])
-            numCol = int(len(col))
-            if (numCol%2) != 0:
-                numCol -= 1
-            for j in xrange(0, numCol, 2):
-                newColumn.append(col[j]+col[j+1])
-            if (len(col)%2) != 0:
-                newColumn.append(col[-1])
-            newMatrix.append(newColumn)
-        self.contactsMatrix = []
-        numCol = int(len(newMatrix))
-        if (numCol%2) != 0:
-            numCol -= 1
-        for i in range(0, numCol, 2):
-            self.contactsMatrix.append([(a*ageShares[i] + b*ageShares[i+1]) for a, b in zip(newMatrix[i], newMatrix[i+1])])
-        if (len(newMatrix)%2) != 0:
-            self.contactsMatrix.append(newMatrix[-1])
+#        newMatrix = []
+#        for i in range(self.contacts.shape[1]):
+#            newColumn = []
+#            col = list(self.contacts[i])
+#            numCol = int(len(col))
+#            if (numCol%2) != 0:
+#                numCol -= 1
+#            for j in xrange(0, numCol, 2):
+#                newColumn.append(col[j]+col[j+1])
+#            if (len(col)%2) != 0:
+#                newColumn.append(col[-1])
+#            newMatrix.append(newColumn)
+#        self.contactsMatrix = []
+#        numCol = int(len(newMatrix))
+#        if (numCol%2) != 0:
+#            numCol -= 1
+#        for i in range(0, numCol, 2):
+#            self.contactsMatrix.append([(a*ageShares[i] + b*ageShares[i+1]) for a, b in zip(newMatrix[i], newMatrix[i+1])])
+#        if (len(newMatrix)%2) != 0:
+#            self.contactsMatrix.append(newMatrix[-1])
         
-        maxContacts = []
-        contactBias = self.p['classContactBias']
-        if self.p['5yearAgeClasses'] == False:
-            ageClasses = int(self.p['ageClasses'])
-            contactsByAge = self.contactsMatrix
-        else:
-            ageClasses = int(self.p['interactionAgeClasses'])
-            contactsByAge = self.contacts
+#        maxContacts = []
+#        contactBias = self.p['classContactBias']
+#        if self.p['5yearAgeClasses'] == False:
+#            ageClasses = int(self.p['ageClasses'])
+#            contactsByAge = self.contactsMatrix
+#        else:
+#            ageClasses = int(self.p['interactionAgeClasses'])
+#            contactsByAge = self.contacts
             
-        self.classContactsMatrix = []
-        # Introducing contact increment to increase contacts in older people ##
-        contactIncrement = self.p['contactCompoundFactor']
-        for i in range(ageClasses):
-            contactsByClass = []
-            ageGroupContacts = []
-            # For each age group, the total contacts with all the other age groups
-            totalContacts = sum(contactsByAge[i])*contactIncrement
-            a = 0
-            for z in range(int(self.p['incomeClasses'])):
-                a += (1.0/float(self.p['incomeClasses']))*math.pow(contactBias, z)
-            lowClassContacts = totalContacts/a
-            for j in range(int(self.p['incomeClasses'])):
-                classContacts = lowClassContacts*math.pow(contactBias, j)
-                # For each income quintile, the max size of social network
-                contactsByClass.append(max(np.random.poisson(math.ceil(classContacts), 1000)))
-            
-            # An age-age contact matrix is created for each income quintile.
-            for j in range(ageClasses):
-                classContacts = []
-                lowClassContacts = contactsByAge[i][j]/a
-                for z in range(int(self.p['incomeClasses'])):
-                    classContacts.append(lowClassContacts*math.pow(contactBias, z)*contactIncrement)
-                ageGroupContacts.append(classContacts)
-            
-            self.classContactsMatrix.append(ageGroupContacts)
-            maxContacts.append(contactsByClass)
+#        self.classContactsMatrix = []
+#        # Introducing contact increment to increase contacts in older people ##
+#        contactIncrement = self.p['contactCompoundFactor']
+#        for i in range(ageClasses):
+#            contactsByClass = []
+#            ageGroupContacts = []
+#            # For each age group, the total contacts with all the other age groups
+#            totalContacts = sum(contactsByAge[i])*contactIncrement
+#            a = 0
+#            for z in range(int(self.p['incomeClasses'])):
+#                a += (1.0/float(self.p['incomeClasses']))*math.pow(contactBias, z)
+#            lowClassContacts = totalContacts/a
+#            for j in range(int(self.p['incomeClasses'])):
+#                classContacts = lowClassContacts*math.pow(contactBias, j)
+#                # For each income quintile, the max size of social network
+#                contactsByClass.append(max(np.random.poisson(math.ceil(classContacts), 1000)))
+#            
+#            # An age-age contact matrix is created for each income quintile.
+#            for j in range(ageClasses):
+#                classContacts = []
+#                lowClassContacts = contactsByAge[i][j]/a
+#                for z in range(int(self.p['incomeClasses'])):
+#                    classContacts.append(lowClassContacts*math.pow(contactBias, z)*contactIncrement)
+#                ageGroupContacts.append(classContacts)
+#            
+#            self.classContactsMatrix.append(ageGroupContacts)
+#            maxContacts.append(contactsByClass)
 #            if i > 4:
 #                contactIncrement *= self.p['over50CompoundFactor']
 #            else:

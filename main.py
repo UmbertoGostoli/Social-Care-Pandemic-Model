@@ -39,6 +39,8 @@ def meta_params():
     m['loadFromFile'] = False
     m['saveSim'] = True
     m['loadSim'] = False
+    m['saveNetwork'] = True
+    m['loadNetwork'] = False
     
     m['numberClasses'] = 5
     m['numCareLevels'] = 5
