@@ -104,9 +104,9 @@ class Sim:
                         'sharesHospitalizedByAge[4]', 'sharesHospitalizedByAge[5]', 'sharesHospitalizedByAge[6]', 'sharesHospitalizedByAge[7]',
                         'sharesHospitalizedByAge[8]', 'sharesIntubatedByAge[0]', 'sharesIntubatedByAge[1]', 'sharesIntubatedByAge[2]', 
                         'sharesIntubatedByAge[3]', 'sharesIntubatedByAge[4]', 'sharesIntubatedByAge[5]', 'sharesIntubatedByAge[6]', 
-                        'sharesIntubatedByAge[7]', 'sharesIntubatedByAge[8]', 'sharesDeathsByAge][0]', 'sharesDeathsByAge][1]', 
-                        'sharesDeathsByAge][2]', 'sharesDeathsByAge][3]', 'sharesDeathsByAge][4]', 'sharesDeathsByAge][5]', 
-                        'sharesDeathsByAge][6]', 'sharesDeathsByAge][7]', 'sharesDeathsByAge][8]']
+                        'sharesIntubatedByAge[7]', 'sharesIntubatedByAge[8]', 'sharesDeathsByAge[0]', 'sharesDeathsByAge[1]', 
+                        'sharesDeathsByAge[2]', 'sharesDeathsByAge[3]', 'sharesDeathsByAge[4]', 'sharesDeathsByAge[5]', 
+                        'sharesDeathsByAge[6]', 'sharesDeathsByAge[7]', 'sharesDeathsByAge[8]']
         
         
         self.outputData = pd.DataFrame()
@@ -8861,9 +8861,9 @@ class Sim:
                    self.sharesHospitalizedByAge[4], self.sharesHospitalizedByAge[5], self.sharesHospitalizedByAge[6], self.sharesHospitalizedByAge[7],
                    self.sharesHospitalizedByAge[8], self.sharesIntubatedByAge[0], self.sharesIntubatedByAge[1], self.sharesIntubatedByAge[2], 
                    self.sharesIntubatedByAge[3], self.sharesIntubatedByAge[4], self.sharesIntubatedByAge[5], self.sharesIntubatedByAge[6], 
-                   self.sharesIntubatedByAge[7], self.sharesIntubatedByAge[8], self.sharesDeathsByAge][0], self.sharesDeathsByAge][1], 
-                   self.sharesDeathsByAge][2], self.sharesDeathsByAge][3], self.sharesDeathsByAge][4], self.sharesDeathsByAge][5], 
-                   self.sharesDeathsByAge][6], self.sharesDeathsByAge][7], self.sharesDeathsByAge][8]]
+                   self.sharesIntubatedByAge[7], self.sharesIntubatedByAge[8], self.sharesDeathsByAge[0], self.sharesDeathsByAge[1], 
+                   self.sharesDeathsByAge[2], self.sharesDeathsByAge[3], self.sharesDeathsByAge[4], self.sharesDeathsByAge[5], 
+                   self.sharesDeathsByAge[6], self.sharesDeathsByAge[7], self.sharesDeathsByAge[8]]
         
         dataMapFile = 'DataMap_' + str(self.year) + '.csv'
         if not os.path.exists(dataMapFolder):
