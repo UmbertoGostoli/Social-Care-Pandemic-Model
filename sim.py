@@ -100,12 +100,13 @@ class Sim:
                         'mobilityReduction_Q1', 'mobilityReduction_Q2', 'mobilityReduction_Q3', 'mobilityReduction_Q4', 'mobilityReduction_Q5',
                         'mobilityReduction_A1', 'mobilityReduction_A2', 'mobilityReduction_A3', 'mobilityReduction_A4', 'mobilityReduction_A5',
                         'mobilityReduction_A6', 'mobilityReduction_A7', 'mobilityReduction_A8', 'mobilityReduction_A9',
-                        'shareHospitalized1To11', 'shareHospitalized12To18', 'shareHospitalized19To39', 'shareHospitalized40To64',
-                        'shareHospitalizedOver65', 'shareIntubated1To11', 'shareIntubated12To18', 'shareIntubated19To39',
-                        'shareIntubated40To64', 'shareIntubatedOver65', 'shareDeaths1To11', 'shareDeaths12To18', 'shareDeaths19To39',
-                        'shareDeaths40To64', 'shareDeathsOver65', 'Age1To11Share_H', 'Age12To18Share_H', 'Age19To39Share_H',
-                        'Age40To64Share_H', 'Over65Share_H', 'Age1To11Share_I', 'Age12To18Share_I', 'Age19To39Share_I',
-                        'Age40To64Share_I', 'Over65Share_I']
+                        'sharesHospitalizedByAge[0]', 'sharesHospitalizedByAge[1]', 'sharesHospitalizedByAge[2]', 'sharesHospitalizedByAge[3]', 
+                        'sharesHospitalizedByAge[4]', 'sharesHospitalizedByAge[5]', 'sharesHospitalizedByAge[6]', 'sharesHospitalizedByAge[7]',
+                        'sharesHospitalizedByAge[8]', 'sharesIntubatedByAge[0]', 'sharesIntubatedByAge[1]', 'sharesIntubatedByAge[2]', 
+                        'sharesIntubatedByAge[3]', 'sharesIntubatedByAge[4]', 'sharesIntubatedByAge[5]', 'sharesIntubatedByAge[6]', 
+                        'sharesIntubatedByAge[7]', 'sharesIntubatedByAge[8]', 'sharesDeathsByAge][0]', 'sharesDeathsByAge][1]', 
+                        'sharesDeathsByAge][2]', 'sharesDeathsByAge][3]', 'sharesDeathsByAge][4]', 'sharesDeathsByAge][5]', 
+                        'sharesDeathsByAge][6]', 'sharesDeathsByAge][7]', 'sharesDeathsByAge][8]']
         
         
         self.outputData = pd.DataFrame()
@@ -271,7 +272,7 @@ class Sim:
         self.dead19To39 = 0
         self.dead40To64 = 0
         self.deadOver65 = 0
-        
+       
         self.totalHospitalizedByClass = [0]*int(self.p['incomeClasses'])
         self.totalIntubatedByClass = [0]*int(self.p['incomeClasses'])
         self.totDeathsByClass = [0]*int(self.p['incomeClasses'])
@@ -287,7 +288,7 @@ class Sim:
         self.totalSymptomaticByAge = [0 for i in range(9)]
         self.totalHospitalizedByAge = [0 for i in range(9)]
         self.totalIntubatedByAge = [0 for i in range(9)]
-        self.deathsByage = [0 for i in range(9)]
+        self.totalDeathsByAge = [0 for i in range(9)]
         
         self.cumulatedProbInfected = 0
         self.cumulatedPrbInfectious = 0
@@ -2174,6 +2175,9 @@ class Sim:
                         agent.inIntensiveCare = True
                     
                     if agent.symptomsLevel == 'severe' or agent.placeOfDeath == 'Hospital':
+                        
+                        self.totalHospitalizedByAge[agent.ageClass] += 1
+        
                         if agent.age >= 1 and agent.age < 12:
                             self.hospitalized1To11 += 1
                         if agent.age >= 12 and agent.age < 19:
@@ -2185,7 +2189,12 @@ class Sim:
                         if agent.age >= 65:
                             self.hospitalizedOver65 += 1
                             
+                        
+                            
                     if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU':
+                        
+                        self.totalIntubatedByAge[agent.ageClass] += 1
+                       
                         if agent.age >= 1 and agent.age < 12:
                             self.icu1To11 += 1
                         if agent.age >= 12 and agent.age < 19:
@@ -2206,6 +2215,8 @@ class Sim:
                     if agent.symptomsLevel == 'critical' or agent.placeOfDeath == 'ICU': 
                         self.icuPopulation -= 1
                 if agent.symptomsLevel == 'dead':
+                    
+                    self.totalDeathsByAge[agent.ageClass] += 1
                     
                     if agent.age >= 1 and agent.age < 12:
                         self.dead1To11 += 1
@@ -2323,6 +2334,19 @@ class Sim:
         print 'Share of over 65 dead: ' + str(self.shareDeathsOver65) + ' (6.31)'
         print ''
         
+        totHospitalized = sum(self.totalHospitalizedByAge)
+        self.sharesHospitalizedByAge = [0]*int(self.p['ageClasses'])
+        if totHospitalized > 0:
+            self.sharesHospitalizedByAge = [x/totHospitalized for x in self.totalHospitalizedByAge]
+        totIntubated = sum(self.totalIntubatedByAge)
+        self.sharesIntubatedByAge = [0]*int(self.p['ageClasses'])
+        if totIntubated > 0:
+            self.sharesIntubatedByAge = [x/totIntubated for x in self.totalIntubatedByAge]
+        totDeaths = sum(self.totalDeathsByAge)
+        self.sharesDeathsByAge = [0]*int(self.p['ageClasses'])
+        if totDeaths > 0:
+            self.sharesDeathsByAge = [x/totDeaths for x in self.totalDeathsByAge]
+       
         self.Age1To11Share_H = 0
         self.Age12To18Share_H = 0
         self.Age19To39Share_H = 0
@@ -8833,12 +8857,13 @@ class Sim:
                    self.mobilityReduction_Q2, self.mobilityReduction_Q3, self.mobilityReduction_Q4, self.mobilityReduction_Q5, self.mobilityReduction_A1,
                    self.mobilityReduction_A2, self.mobilityReduction_A3, self.mobilityReduction_A4, self.mobilityReduction_A5, self.mobilityReduction_A6,
                    self.mobilityReduction_A7, self.mobilityReduction_A8, self.mobilityReduction_A9,
-                   self.shareHospitalized1To11, self.shareHospitalized12To18, self.shareHospitalized19To39, self.shareHospitalized40To64,
-                   self.shareHospitalizedOver65, self.shareIntubated1To11, self.shareIntubated12To18, self.shareIntubated19To39,
-                   self.shareIntubated40To64, self.shareIntubatedOver65, self.shareDeaths1To11, self.shareDeaths12To18, self.shareDeaths19To39,
-                   self.shareDeaths40To64, self.shareDeathsOver65, self.Age1To11Share_H, self.Age12To18Share_H, self.Age19To39Share_H,
-                   self.Age40To64Share_H, self.Over65Share_H, self.Age1To11Share_I, self.Age12To18Share_I, self.Age19To39Share_I,
-                   self.Age40To64Share_I, self.Over65Share_I]
+                   self.sharesHospitalizedByAge[0], self.sharesHospitalizedByAge[1], self.sharesHospitalizedByAge[2], self.sharesHospitalizedByAge[3], 
+                   self.sharesHospitalizedByAge[4], self.sharesHospitalizedByAge[5], self.sharesHospitalizedByAge[6], self.sharesHospitalizedByAge[7],
+                   self.sharesHospitalizedByAge[8], self.sharesIntubatedByAge[0], self.sharesIntubatedByAge[1], self.sharesIntubatedByAge[2], 
+                   self.sharesIntubatedByAge[3], self.sharesIntubatedByAge[4], self.sharesIntubatedByAge[5], self.sharesIntubatedByAge[6], 
+                   self.sharesIntubatedByAge[7], self.sharesIntubatedByAge[8], self.sharesDeathsByAge][0], self.sharesDeathsByAge][1], 
+                   self.sharesDeathsByAge][2], self.sharesDeathsByAge][3], self.sharesDeathsByAge][4], self.sharesDeathsByAge][5], 
+                   self.sharesDeathsByAge][6], self.sharesDeathsByAge][7], self.sharesDeathsByAge][8]]
         
         dataMapFile = 'DataMap_' + str(self.year) + '.csv'
         if not os.path.exists(dataMapFolder):
