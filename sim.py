@@ -2337,15 +2337,15 @@ class Sim:
         totHospitalized = sum(self.totalHospitalizedByAge)
         self.sharesHospitalizedByAge = [0]*int(self.p['ageClasses'])
         if totHospitalized > 0:
-            self.sharesHospitalizedByAge = [x/totHospitalized for x in self.totalHospitalizedByAge]
+            self.sharesHospitalizedByAge = [float(x)/float(totHospitalized) for x in self.totalHospitalizedByAge]
         totIntubated = sum(self.totalIntubatedByAge)
         self.sharesIntubatedByAge = [0]*int(self.p['ageClasses'])
         if totIntubated > 0:
-            self.sharesIntubatedByAge = [x/totIntubated for x in self.totalIntubatedByAge]
+            self.sharesIntubatedByAge = [float(x)/float(totIntubated) for x in self.totalIntubatedByAge]
         totDeaths = sum(self.totalDeathsByAge)
         self.sharesDeathsByAge = [0]*int(self.p['ageClasses'])
         if totDeaths > 0:
-            self.sharesDeathsByAge = [x/totDeaths for x in self.totalDeathsByAge]
+            self.sharesDeathsByAge = [float(x)/float(totDeaths) for x in self.totalDeathsByAge]
        
         self.Age1To11Share_H = 0
         self.Age12To18Share_H = 0
