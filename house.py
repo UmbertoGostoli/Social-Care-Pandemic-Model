@@ -19,6 +19,7 @@ class House:
         self.occupants = []
         self.occupantsID = []  # For pickle
         self.newOccupancy = False
+        self.vacated = False
         self.town = town
         self.x = hx
         self.y = hy

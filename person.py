@@ -15,18 +15,20 @@ class Person:
         self.fatherID = -1 # For pickle
         self.age = age
         self.ageClass = 0
+        self.interactionAgeClass = 0
+        self.mortalityAgeClass = 0
         self.status = status
         self.lifeExpectancy = 0
         self.independentStatus = independence
         self.maternityStatus = False
-        
+    
         # Pandemic variables
         self.healthStatus = healthStatus
         self.severityLevel = 0
         self.mildConditionIndex = 0
         self.daysFromInfection = 0
         self.incubationPeriod = -1
-        self.symptomsLevel = -1
+        self.symptomsLevel = None
         self.recoveryPeriod = -1
         self.workingShare = 1.0
         self.symptomatic = False
@@ -36,11 +38,36 @@ class Person:
         self.haveBeenHospitalized = False
         self.inIntensiveCare = False
         self.networkInfectionFactor = 0
+        self.placeOfDeath = None
         self.aiw = 0
         self.ciw = 0
         self.adw = 0
         self.cdw = 0
         self.gdw = 0
+        self.numContacts = 0
+        self.domesticRiskFactor = 0
+        self.randomRiskFactor = 0
+        self.communalRiskFactor = 0
+        self.careRiskFactor = 0
+        self.contagiousnessIndex = 0
+        self.viralLoad = 0
+        self.relativeRisk = 0
+        self.contactReductionRate = 1.0
+        self.testPositive = False
+        self.dailyContacts = []
+        self.randomContacts = []
+        self.numContacts = 0
+        self.networkContacts = 0
+        self.numRandomContacts = 0
+        self.socialContacts = nx.DiGraph()
+        self.kinshipContacts = nx.DiGraph()
+        self.socialContacIDs = []
+        self.contactWeights = []
+        self.genderWeight = 1.0
+        self.nokCareContacts = []
+        self.totalContacts = 0
+        self.inHouseInformalCare = 0
+        self.externalInformalCare = 0
         
         self.children = []
         self.childrenID = [] # For pickle
@@ -86,6 +113,9 @@ class Person:
         else:
             self.sex = sex
         self.house = house
+        self.currentTown = None
+        if self.house != None:
+            self.currentTown = house.town
         self.houseID = -1 # For pickle
         self.sec = sec
         
@@ -127,6 +157,27 @@ class Person:
         self.suppliers = []
         self.id = Person.counter
         Person.counter += 1
+
+class ClassContact:
+    def __init__ (self, age, quintile, num, totContacts, empContacts, totAgeContacts):
+        self.age = age
+        self.quintile = quintile
+        self.number = num
+        self.weight = 0
+        self.totContactsByAge = totAgeContacts
+        self.contacts = totContacts
+        self.actualContacts = 0
+        self.deltaContacts = totContacts
+        self.meanContactsEmp = empContacts
+        self.contactsByAge = [0]*len(self.meanContactsEmp)
+        self.actualContactsByAge = [0]*len(self.meanContactsEmp)
+        self.meanActContacts = [x/self.number for x in self.contactsByAge]
+        self.deltaMeanContacts = [x-y for (x, y) in zip(self.meanContactsEmp, self.meanActContacts)]
+        
+class CareContact:
+    def __init__ (self, contact, hoursOfCare):
+        self.contact = contact
+        self.contactDuration = hoursOfCare
 
 class Population:
     """The population class stores a collection of persons."""

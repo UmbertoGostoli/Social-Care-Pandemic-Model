@@ -15,6 +15,8 @@ from collections import OrderedDict
 import time
 import datetime
 import multiprocessing
+from glob import glob
+import sys
 
 def meta_params():
     
@@ -24,7 +26,7 @@ def meta_params():
     m['initialPop'] = 600
     m['startYear'] = 1860
     m['endYear'] = 2020
-    m['pandemicPeriod'] = 240
+    m['pandemicPeriod'] = 180 # 180 # Short pandemic period to debug    # 180 
     m['thePresent'] = 2012
     m['statsCollectFrom'] = 1960
     m['policyStartDay'] = 0 # 14
@@ -35,6 +37,11 @@ def meta_params():
     m['singleRunGraphs'] = False
     m['favouriteSeed'] = int(time.time())
     m['loadFromFile'] = False
+    m['saveSim'] = True
+    m['loadSim'] = False
+    m['saveNetwork'] = True
+    m['loadNetwork'] = False
+    
     m['numberClasses'] = 5
     m['numCareLevels'] = 5
     m['timeDiscountingRate'] = 0.035
@@ -145,6 +152,13 @@ def meta_params():
     m['pixelsPerTown'] = 56
     m['maxTextUpdateList'] = 22
     
+    m['behaviouralResponse'] = True
+    m['socialCareProvision'] = True
+    
+    m['sensitivityMode'] = True
+    m['sensitivityOutputs'] = ['cumulatedHospitalizations']
+    m['sensitivityParameters'] = ['classContactBias', 'householdIsolationFactor', 'socialPreferenceFactor', 'incomeBehaviourExp', 
+                                    'riskBehaviourFactor', 'classInteractionBeta', 'locationInteractionBeta']
     # multiprocessing params
     m['multiprocessing'] = False
     m['numberProcessors'] = 10
@@ -182,12 +196,12 @@ def init_params():
     p['wealthToPoundReduction'] = 250.0
     #### SES-version parameters   ######
     
-    p['maleMortalityBias'] = 0.8   ### SES death bias
-    p['femaleMortalityBias'] = 0.85
+    p['maleMortalityBias'] = 0.85   ### SES death bias # 0.8
+    p['femaleMortalityBias'] = 0.9  ### SES death bias # 0.85
     p['careNeedBias'] = 0.9   ### Care Need Level death bias
     p['unmetCareNeedBias'] = 0.5  ### Unmet Care Need death bias
     
-    p['fertilityBias'] = 0.9  ### Fertility bias
+    p['fertilityBias'] = 0.95  ### Fertility bias # 0.9
     
     ####  Income-related parameters
     p['workingAge'] = [16, 18, 20, 22, 24]
@@ -291,7 +305,7 @@ def init_params():
     p['hospitalizationParam'] = 0.5
     p['needLevelParam'] = 2.0
     p['unmetSocialCareParam'] = 2.0
-    p['costHospitalizationPerDay'] = 400
+    p['costHospitalizationPerDay'] = 500
     
     # Priced growth  #####
     p['wageGrowthRate'] = 1.0 # 1.01338 # 
@@ -350,7 +364,7 @@ def init_params():
     ## Leaving home and moving around statistics
     p['probApartWillMoveTogether'] = 1.0 # 0.3
     p['coupleMovesToExistingHousehold'] = 0.0 # 0.3
-    p['basicProbAdultMoveOut'] = 0.22
+    p['basicProbAdultMoveOut'] = 0.25
     p['probAdultMoveOutModifierByDecade'] = [ 0.0, 0.2, 1.0, 0.6, 0.3, 0.15, 0.03, 0.03, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
     p['basicProbSingleMove'] = 0.05
     p['probSingleMoveModifierByDecade'] = [ 0.0, 1.0, 1.0, 0.8, 0.4, 0.06, 0.04, 0.02, 0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
@@ -360,85 +374,177 @@ def init_params():
     p['variableMoveBack'] = 0.1
     
     # Relocation Parameters
+    p['classAffinityExp'] = 0.5
+    p['distanceAffinityExp'] = 2.0
     p['careAttractionExp'] = 0.002
     p['networkDistanceParam'] = 0.5
     p['relativeRentExp'] = 0.01
+    p['classRentExp'] = 0.2
     p['rentExp'] = 0.1
     p['sesShareExp'] = 1.0
     p['knaExp'] = 0.001
-    p['yearsInTownBeta'] = 0.5
+    
     p['scalingFactor'] = 0.8
+    p['townSelectionExp'] = 2.0
+    # Household relocation factors
     p['relocationCostBeta'] = 0.5
-    
     p['relocationCostParam'] = 0.5
+    p['yearsInTownBeta'] = 0.5
     p['supportNetworkBeta'] = 0.1
-    p['townSizeFactor'] = 0.01
-    
     p['incomeRelocationBeta'] = 0.0002
-    p['baseRelocationRate'] = 0.1
+    p['baseRelocationRate'] = 1.0
+    
+    p['townSizeFactor'] = 0.01
     
     #### Pandemic parameters   ######
     
     ### Sensitivity parameters ###
-    p['beta'] = 0.2
-    p['symptomsContagiousnessExp'] = 0.5
-    p['asymptomaticContagiousnessFactor'] = 0.5
-    p['maxNetworkFactor'] = 2.0
-    p['networkWeightBeta'] = 0.1
+    p['beta'] = 0.5
+    # Two betas
+    p['betaCommunity'] = 0.02 # 0.02
+    p['elderlyBetaIncrement'] = 0.04
+    p['betaRandom'] = 0.5
+    p['betaHousehold'] = 0.2 # 0.2
+    p['betaCare'] = 0.2 # 0.2
+    p['contactDurationExp'] = 0.5
+    # p['severityExp'] = 0.02
+    # p['severityExpReduction'] = 1.0
+    # p['stageDiscountFactor'] = 0.9
+    
+    # p['symptomsMobilityExp'] = 0.5
+    p['loadContagiousnessExp'] = 1.0
+    # p['asymptomaticContagiousnessFactor'] = 0.5
+    # p['maxNetworkFactor'] = 2.0
+    # p['networkWeightBeta'] = 0.2
+    
+    # Not used in current version
     p['distanceInfectionFactor'] = 1.0
+    
     p['mildExponentialPar'] = 0.1
     p['symptomSocialCareThreshold'] = 0.5
+    p['symptomChildcareThreshold'] = 0.5
+    p['classContactBias'] = 1.05
+    # Parameters for new version of I determination
+    # p['mildSymptomThreshold'] = 0.7
+    p['householdIsolationFactor'] = 0.5
+    p['householdInfectionExp'] = 0.5
+    p['mildMobilityExp'] = 1.0
     
-    p['symptomsMobilityExp'] = 0.5
-    p['mildSymptomThreshold'] = 0.7
-    
-    
-    
+    p['5yearAgeClasses'] = True
     p['ageClasses'] = 9
+    p['ageRange'] = 10
+    p['interactionAgeClasses'] = 17
+    p['numMortalityAgeClasses'] = 19
     p['ageBreaks'] = [10, 20, 30, 40, 50, 60, 70, 80]
-    p['numberOfContacts'] = [10, 14, 20, 20, 20, 18, 10, 7, 7]
+    p['interactionAgeBreaks'] = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
+    p['mortalityAgeBreaks'] = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90]
+    p['infectionFatalityByAge'] = [0.0, 0.01, 0.01, 0.02, 0.03, 0.04, 0.06, 0.10, 0.16, 0.24, 0.38, 0.60, 0.94, 1.47, 2.31, 3.61, 5.66, 8.86, 17.37]
+    p['numberOfContacts'] = [10, 15, 20, 20, 20, 18, 10, 7, 7]
     p['infectionWeightsByAge'] = [1.0, 1.0, 2.0, 4.0, 4.0, 5.0, 6.0, 7.0, 7.0]
+    p['contactCompoundFactor'] = 3 # 1.2
+    p['dailyContactsShare'] = 0.33
+    p['networkContactsRatio'] = 3.0
+    p['deltaContactsBeta'] = 0.01
+    p['deltaMeanContactsBeta'] = 1.0
+    # p['over50CompoundFactor'] = 1.0 # 1.2
+    # p['below50CompoundFactor'] = 1.0 # 1.1
     
     # p['infectionWeightsByAge'] = [1.0, 1.5, 4.0, 7.0, 8.0, 8.0, 6.0, 5.0, 5.0]
-    p['severityWeightsByAge'] = [1.0, 1.0, 1.0, 1.0, 3.0, 9.0, 25.0, 50.0, 70.0]
-    p['severityWeightsByGender'] = [1.0, 1.5]
-    p['severityWeightsByClass'] = [1.2, 1.10, 1.0, 1.0, 1.0]
+    
+    # Behavioural parameters
+    
+    # p['scaleFactor'] = 280
+    
+    # Not used in current version
+    # p['ageRiskFactor'] = 0.05
+    p['socialPreferenceFactor'] = 0.01 # 0.5
+    p['behaviouralResponseFactor'] = 50.0 # 100.0
+    p['timeDiscountingFactor'] = 0.7
+    p['workingFactorReduction'] = [0.2, 0.2, 0.25, 0.35, 0.5]
+    p['incomeBehaviourExp'] = 0.2 # 0.5
+    p['riskBehaviourFactor'] = 100.0 # 1.0
+    p['probTestExp'] = 2.0
+    
+    # Social interaction parameters
+    p['sameTownWeight'] = 200.0
+    p['randomContactsShare'] = 0.0 # 1.0
+    p['fractionSWcontacts'] = 0.05
+    p['friendsInteractionExp'] = 0.5 # 1.2
+    p['friendsInteractionBeta'] = 0.1 # 0.25
+    p['classInteractionExp'] = 2.0 # 2.0
+    p['classInteractionBeta'] = 0.2 # 0.1
+    p['locationInteractionExp'] = 2.0 # 2.0
+    p['locationInteractionBeta'] = 0.002 # 0.001
+    p['townInteractionExp'] = 2.0 # 2.0
+    p['townInteractionBeta'] = 0.05 # 0.001
+    
+    # Not used in current version
+    # p['severityWeightsByAge'] = [1.0, 1.0, 1.0, 1.0, 3.0, 9.0, 25.0, 50.0, 70.0]
+    p['severityClassBias'] = 0.95 # 0.9
+    p['severityGenderBias'] = 0.7
+    
+    p['viralLoadWeight'] = 0.5
+    # p['maleSeverityWeight'] = 1.5
+    p['incomeSeverityWeight'] = 0.2 # 2.0
+    p['ageSeverityWeight'] = 0.5 # 2.0
+    p['mildConditionBeta'] = 0.5
+    
     p['incomeClasses'] = 5
-    p['infectionWeightsByClass'] = [2.0, 1.5, 1.25, 1.0, 1.0]
+    
+    # Not used in current version
+    # p['infectionWeightsByClass'] = [2.0, 1.5, 1.25, 1.0, 1.0]
+    
+    # p['factorsWeights'] = [0.5, 1.0, 1.0, 1.0]
+    # p['factorsExp'] = [0.1, 0.1, 0.5]
     
     p['meanIncubation'] = 1.6
-    p['sdIncubation'] = 0.25
+    p['sdIncubation'] = 0.25 # 0.5
     p['minIncubation'] = 3
-    p['meanRecovery'] = 2.4
-    p['sdRecovery'] = 0.3
-    p['exogenousInfectionRate'] = 0.001
+    p['meanRecovery'] = 2.4 # 2.5
+    p['sdRecovery'] = 0.3 # 0.9
+    p['exogenousInfectionRate'] = 0.0004
     p['preSymptomsContagiousPeriod'] = 2
     p['symptomsLevels'] = ['asymptomatic', 'mild', 'severe', 'critical', 'dead']
     p['symptomsProbabilities'] = [0.3, 0.5, 0.15, 0.04, 0.01]
+    p['probSymptomatic'] = [0.67, 0.7, 0.72, 0.74, 0.77, 0.79, 0.82, 0.86, 0.9] # [0.67, 0.7, 0.72, 0.74, 0.77, 0.79, 0.82, 0.86, 0.9]
     
+    # Transition rates parameters
+    p['betaHosp'] = 0.001
+    p['alphaHosp'] = 2.5
+    p['betaICU'] = 0.000008
+    p['alphaICU'] = 5.4
+    p['betaIFR'] = 0.00000006
+    p['alphaIFR'] = 6.5
+    
+    # Explicit age-based transition rates
+    p['probsHospitalization'] = [0.002, 0.005, 0.02, 0.04, 0.06, 0.09, 0.14, 0.24, 0.3] # [0.005, 0.02, 0.06, 0.18, 0.26, 0.33, 0.39, 0.44, 0.48]
+    p['probsIntensiveCare'] = [0.03, 0.04, 0.05, 0.06, 0.08, 0.2, 0.3, 0.45, 0.6] # [0.005, 0.01, 0.015, 0.025, 0.06, 0.09, 0.18, 0.34, 0.58]
+    p['infectionFatalityRatio'] = [0.002, 0.006, 0.02, 0.06, 0.15, 0.5, 1.5, 4.0, 9.0] # [0.002, 0.006, 0.03, 0.08, 0.15, 0.6, 2.2, 5.1, 9.3]
+    p['shareDeathByCondition'] = 0.75
     p['classWeightParam'] = 0.1
-    p['symptomChildcareThreshold'] = 0.5
+    
     
     # Policy variables
     
     p['lockdownEvent'] = 'death' # 'hospitalization' # 'intubation'
     p['lockdownPeriod'] = 3
-    p['daysFromEvent'] = 14
+    p['daysFromEvent'] = 3  # Switch off the lockdown
     p['endLockdownIndicator'] = 'newCases'
     p['benchmarkIndicator'] = 'overMax'
     p['thresholdIndicator'] = 1.0/8.0
     
     p['lockdown'] = False
+    p['careLockdown'] = False
+    p['lockdownContactReductionRate'] = 0.5
     p['lockdownDuration'] = 90
     # Lockdown changes on social care
     p['betaReduction'] = 0.5
-    p['supplyReductionRate'] = 0.2
+    p['supplyReductionRate'] = 1.0
     p['increasedSupplyFactor'] = 0.5
     
-    
-    # p['supportNetworkBeta'] = 0.1
-    # p['incomeRelocationBeta'] = 0.0002
-    # p['baseRelocationRate'] = 0.1
+    p['supportNetworkBeta'] = 0.1
+    p['incomeRelocationBeta'] = 0.0002
+    p['baseRelocationRate'] = 0.1
 
     # Save default parameters in separated folder
     folder = 'defaultSimFolder'
@@ -564,8 +670,8 @@ def loadPolicies(scenarios):
                 combinations = list(itertools.product(*policyList))
                 for c in combinations:
                     policyParams = policies[i][0].copy()
-                    for v in c:
-                        policyParams[parNames[c.index(v)]][0] = v
+                    for n in range(len(c)):
+                        policyParams[parNames[n]][0] = c[n] # c.index(c[n])
                     policyParams['policyIndex'][0] = index
                     index += 1
                     policies[i].append(policyParams)
@@ -638,13 +744,16 @@ def multiprocessingSim(params):
     s = Sim(params[0]['scenarioIndex'], params[0], folderRun)
     
     print''
-    print params[1]['policyIndex']
+    print 'Policy index: ' + str(params[1]['policyIndex'])
+    print 'Policy params: ' + str(params[1])
     print''
     
     s.run(params[1]['policyIndex'], params[1], params[1]['randomSeed'])
         
 
 if __name__ == "__main__":
+    
+    print 'Start simulation'
     
     # Create a folder for the simulation
     timeStamp = datetime.datetime.today().strftime('%Y_%m_%d-%H_%M_%S')
@@ -706,6 +815,8 @@ if __name__ == "__main__":
         for key, value in metaParams.iteritems():
             if len(value) < 2:
                 metaParams[key] = value[0]
+                if isinstance(value[0], str) :
+                    metaParams[key] = [value[0]]
         
         scenarios = loadScenarios()
         
@@ -783,6 +894,50 @@ if __name__ == "__main__":
             pool.map(multiprocessingSim, params)
             pool.close()
             pool.join()
+            
+    # Code to save the sensitivity outputs to a file
+    if metaParams['sensitivityMode'] == True:
+        for repeatID in range(numRepeats):
+            directory = folder + '/Rep_' + str(repeatID)
+            # Create a folder for sensitivity output
+            sensitivityFolder = os.path.join(directory, 'SensitivityFolder')
+            if not os.path.exists(sensitivityFolder):
+                os.makedirs(sensitivityFolder)
+            for scenarioID in range(len(scenariosParams)):
+                parametersFolder = directory + '/Scenario_' + str(scenarioID)
+                parametersFile = pd.read_csv(parametersFolder + '/scenarioParameters.csv', sep=',', header=0)
+                parameters = []
+                for parameterName in metaParams['sensitivityParameters']:
+                    parameters.append(parametersFile[parameterName][0])
+                outputFolder = parametersFolder + '/Policy_0'
+                outputsFile = pd.read_csv(outputFolder + '/Outputs.csv', sep=',', header=0)
+                # Select outputs
+                outputs = []
+                for variable in metaParams['sensitivityOutputs']:
+                    # outputsFile.reset_index(inplace=True)
+                    outputs.append(outputsFile.loc[outputsFile['day'] == metaParams['pandemicPeriod'], variable].values[0])
+                # Save output into a new csv file
+                if scenarioID == 0:
+                    with open(os.path.join(sensitivityFolder, "sensitivityParameters.csv"), "w") as file:
+                        writer = csv.writer(file, delimiter = ",", lineterminator='\r')
+                        writer.writerow((metaParams['sensitivityParameters']))
+                        writer.writerow(parameters)
+                    with open(os.path.join(sensitivityFolder, "sensitivityOutputs.csv"), "w") as file:
+                        writer = csv.writer(file, delimiter = ",", lineterminator='\r')
+                        writer.writerow((metaParams['sensitivityOutputs']))
+                        writer.writerow(outputs)
+                else:
+                    with open(os.path.join(sensitivityFolder, "sensitivityParameters.csv"), "a") as file:
+                        writer = csv.writer(file, delimiter = ",", lineterminator='\r')
+                        writer.writerow(parameters)
+                    with open(os.path.join(sensitivityFolder, "sensitivityOutputs.csv"), "a") as file:
+                        writer = csv.writer(file, delimiter = ",", lineterminator='\r')
+                        writer.writerow(outputs)
+                # Saving a text file....
+                # with open(sensitivityFolder + '/output.txt', 'a') as f:
+                #    f.write(output + "\n")
+        
+        
         
 
 
