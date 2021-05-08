@@ -159,13 +159,14 @@ class Person:
         Person.counter += 1
 
 class ClassContact:
-    def __init__ (self, age, quintile, num, totContacts, empContacts, totAgeContacts):
+    def __init__ (self, age, quintile, num, totContacts, indContacts, empContacts, totAgeContacts):
         self.age = age
         self.quintile = quintile
         self.number = num
         self.weight = 0
         self.totContactsByAge = totAgeContacts
         self.contacts = totContacts
+        self.individualContacts = indContacts
         self.actualContacts = 0
         self.deltaContacts = totContacts
         self.meanContactsEmp = empContacts
