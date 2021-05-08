@@ -443,6 +443,9 @@ def init_params():
     p['infectionWeightsByAge'] = [1.0, 1.0, 2.0, 4.0, 4.0, 5.0, 6.0, 7.0, 7.0]
     p['contactCompoundFactor'] = 3 # 1.2
     p['dailyContactsShare'] = 0.33
+    p['networkContactsRatio'] = 3.0
+    p['deltaContactsBeta'] = 0.01
+    p['deltaMeanContactsBeta'] = 1.0
     # p['over50CompoundFactor'] = 1.0 # 1.2
     # p['below50CompoundFactor'] = 1.0 # 1.1
     

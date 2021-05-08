@@ -157,6 +157,23 @@ class Person:
         self.suppliers = []
         self.id = Person.counter
         Person.counter += 1
+
+class ClassContact:
+    def __init__ (self, age, quintile, num, totContacts, indContacts, empContacts, totAgeContacts):
+        self.age = age
+        self.quintile = quintile
+        self.number = num
+        self.weight = 0
+        self.totContactsByAge = totAgeContacts
+        self.contacts = totContacts
+        self.individualContacts = indContacts
+        self.actualContacts = 0
+        self.deltaContacts = totContacts
+        self.meanContactsEmp = empContacts
+        self.contactsByAge = [0]*len(self.meanContactsEmp)
+        self.actualContactsByAge = [0]*len(self.meanContactsEmp)
+        self.meanActContacts = [x/self.number for x in self.contactsByAge]
+        self.deltaMeanContacts = [x-y for (x, y) in zip(self.meanContactsEmp, self.meanActContacts)]
         
 class CareContact:
     def __init__ (self, contact, hoursOfCare):
