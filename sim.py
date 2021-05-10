@@ -218,6 +218,7 @@ class Sim:
         self.recoveryPeriods = []
         self.contactsMatrix = []
         self.classContactsMatrix = []
+        self.classesContacts = []
         self.ifr = []
         self.probsDeathIntubated = []
         # Statistics
@@ -472,8 +473,8 @@ class Sim:
                     self.from_Agents_to_IDs()
                     pickle.dump(self.pop, open('save.p', 'wb'))
                     pickle.dump(self.map, open('save.m', 'wb'))
-                    pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))
-                    
+                    pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))        
+                    pickle.dump(self.classesContacts, open('save.cc', 'wb'))
                     
                     
             else:  # In this case, a saved simulation is uploaded
@@ -481,6 +482,7 @@ class Sim:
                 self.pop = pickle.load(open('save.p', 'rb'))
                 self.map = pickle.load(open('save.m', 'rb'))
                 self.classContactsMatrix = pickle.load(open('save.cm', 'rb'))
+                self.classesContacts = pickle.load(open('save.cc', 'rb'))
                 
             if fromAgentsToIDs == True or self.p['loadSim'] == True:
                 self.from_IDs_to_Agents()   
@@ -493,6 +495,7 @@ class Sim:
                         self.from_Agents_to_IDs()
                         pickle.dump(self.pop, open('save.p', 'wb'))
                         pickle.dump(self.classContactsMatrix, open('save.cm', 'wb'))
+                        pickle.dump(self.classesContacts, open('save.cc', 'wb'))
                         self.from_IDs_to_Agents()
           
             # Display
@@ -546,6 +549,7 @@ class Sim:
                     pickle.dump(self.newCasesRatios, open(policyFolder + '/save.nr', 'wb'))
                     pickle.dump(self.maxNewCases, open(policyFolder + '/save.n', 'wb'))
                     pickle.dump(self.classContactsMatrix, open(policyFolder + '/save.cm', 'wb'))
+                    pickle.dump(self.classesContacts, open(policyFolder + '/save.cc', 'wb'))
                     pickle.dump(self.totalDeaths, open(policyFolder + '/save.d', 'wb'))
                     pickle.dump(self.lockdownDay, open(policyFolder + '/save.l', 'wb'))
                     
@@ -576,6 +580,7 @@ class Sim:
                 self.newCasesRatios = pickle.load(open(self.folder + '/Policy_0/save.nr', 'rb'))
                 self.maxNewCases = pickle.load(open(self.folder + '/Policy_0/save.n', 'rb'))
                 self.classContactsMatrix = pickle.load(open(self.folder + '/Policy_0/save.cm', 'rb'))
+                self.classesContacts = pickle.load(open(self.folder + '/Policy_0/save.cc', 'rb'))
                 self.totalDeaths = pickle.load(open(self.folder + '/Policy_0/save.d', 'rb'))
                 # self.lockdownDay = pickle.load(open(self.folder + '/Policy_0/save.l', 'rb'))
                 
