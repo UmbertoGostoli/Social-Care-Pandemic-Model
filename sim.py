@@ -1978,7 +1978,7 @@ class Sim:
                             infected = True
             
             for careContact in person.nokCareContacts:
-                if careContact.healthStatus == 'infectious':
+                if careContact.contact.healthStatus == 'infectious':
                     reductionFactor = 1.0
                     if careContact.contact.testPositive == True:
                         reductionFactor = self.p['householdIsolationFactor']
