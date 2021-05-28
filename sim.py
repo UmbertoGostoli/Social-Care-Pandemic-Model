@@ -3,6 +3,7 @@ from person import Person
 from person import CareContact
 from person import ClassContact
 from person import Population
+from person import Node
 from house import House
 from house import Town
 from house import Map
@@ -304,7 +305,7 @@ class Sim:
         self.textUpdateList = []
         
         self.socialCareNetwork = nx.DiGraph()
-        
+        self.infectionsNetwork = nx.DiGraph()
         
         self.minIsolationRate = 0
         self.maxIsolationRate = 0
@@ -570,6 +571,8 @@ class Sim:
                     pickle.dump(self.totalHospitalizedByClass, open(policyFolder + '/save.hc', 'wb'))
                     pickle.dump(self.totalIntubatedByClass, open(policyFolder + '/save.vc', 'wb'))
                     pickle.dump(self.totDeathsByClass , open(policyFolder + '/save.dc', 'wb'))
+                    
+                    pickle.dump(self.infectionsNetwork, open(policyFolder + '/save.if_nw', 'wb'))
                 
                 # Upload simulation
                 print 'Uploading the simulation....'
@@ -601,6 +604,8 @@ class Sim:
                 self.totalIntubatedByClass = pickle.load(open(self.folder + '/Policy_0/save.vc', 'rb'))
                 self.totDeathsByClass = pickle.load(open(self.folder + '/Policy_0/save.dc', 'rb'))
                 
+                self.infectionsNetwork = pickle.load(open(self.folder + '/Policy_0/save.if_nw', 'rb'))
+                
                 self.from_IDs_to_Agents()
                 
                 # Upload outputs
@@ -627,6 +632,8 @@ class Sim:
             self.doOneDay(self.pandemicDay, policyFolder, dataMapFolder, dataHouseholdFolder)
             
         endSim = time.time()
+        
+        self.saveInfectionNetwork(policyFolder)
         
         simulationTime = endSim - startSim
         
@@ -881,8 +888,12 @@ class Sim:
         ################################
         
         self.doStats(day, policyFolder, dataMapFolder, dataHouseholdFolder)
-        
+    
         # print 'Doing stats....'
+        
+    def saveInfectionNetwork(self, policyFolder):
+        pickle.dump(self.infectionsNetwork, open(policyFolder + '/save.if_nw', 'wb'))
+        nx.write_gexf(self.infectionsNetwork, policyFolder + '/infectionsNetwork.gexf')
         
     def socialContactsData(self):
         
@@ -1803,7 +1814,9 @@ class Sim:
                     genderIndex = 0
                     if person.sex == 'female':
                         genderIndex = 1
-                    
+                        
+                    newNode = Node(person.id, person.age, person.incomeQuintile)
+                    self.infectionsNetwork.add_node(newNode)
 
                     prob = self.probSymptomatic[person.ageClass][person.incomeQuintile][genderIndex]
                     if np.random.random() > prob: # self.p['probSymptomatic'][person.ageClass]:
@@ -1948,68 +1961,123 @@ class Sim:
         averageContagiousnessOver65 = 0
         careRiskFactorOver65 = 0
         homeRiskFactorOver65 = 0
-        
+
         for person in susceptible:
-            dailyContacts = len(person.dailyContacts)
-            averageContagiousness = 0
-            if len(person.dailyContacts) > 0:
-                averageContagiousness = np.mean([x.contagiousnessIndex for x in person.dailyContacts])
-            person.communalRiskFactor = float(dailyContacts)*averageContagiousness
             
-            # random risk factor
-#            randContacts = len(person.randomContacts)
-#            averageContagiousness = 0
-#            if len(person.randomContacts) > 0:
-#                averageContagiousness = np.mean([x.contagiousnessIndex for x in person.randomContacts])
-#            person.randomRiskFactor = float(randContacts)*averageContagiousness
+            # Alternative process
+            infected = False
+            for contact in person.dailyContacts:
+                if contact.healthStatus == 'infectious':
+                    prob = self.p['betaCommunity']*contact.contagiousnessIndex
+                    if np.random.random() < prob:
+                        if infected == False:
+                            exposedAgents.append(person)
+                            newNode = Node(person.id, person.age, person.incomeQuintile)
+                            vectorNode = [x for x in self.infectionsNetwork.nodes() if x.agentID == contact.id][0]
+                            self.infectionsNetwork.add_edge(vectorNode, newNode, color = "g")
+                            infected = True
             
-            person.careRiskFactor = 0
-            if len(person.nokCareContacts) > 0:
-                for careContact in person.nokCareContacts:
+            for careContact in person.nokCareContacts:
+                if careContact.healthStatus == 'infectious':
                     reductionFactor = 1.0
                     if careContact.contact.testPositive == True:
                         reductionFactor = self.p['householdIsolationFactor']
                     durationFactor = math.pow(careContact.contactDuration*reductionFactor, self.p['contactDurationExp'])
-                    person.careRiskFactor += careContact.contact.contagiousnessIndex*durationFactor
-
-            # Compute probability of infection
-            socialBeta = self.p['betaCommunity']
-            if person.age <= 30:
-                socialBeta *= self.p['betaLessThan31']
-            if person.age > 30 and person.age <=60:
-                socialBeta *= self.p['beta30To60Increment']
-            elif person.age >= 70 and person.age < 80: 
-                socialBeta *= self.p['beta70To79Increment']
-            elif person.age >= 80:
-                socialBeta *= self.p['beta80PlusIncrement']
-            communalInfectionIndex = self.p['betaCommunity']*person.communalRiskFactor
-            # randomInfectionIndex = self.p['betaRandom']*person.randomRiskFactor
-            householdInfectionIndex = self.p['betaHousehold']*person.domesticRiskFactor
-            careInfectionIndex = self.p['betaCare']*person.careRiskFactor
+                    prob = self.p['betaCare']*careContact.contact.contagiousnessIndex*durationFactor
+                    if np.random.random() < prob:
+                        if infected == False:
+                            exposedAgents.append(person)
+                            newNode = Node(person.id, person.age, person.incomeQuintile)
+                            vectorNode = [x for x in self.infectionsNetwork.nodes() if x.agentID == careContact.contact.id][0]
+                            self.infectionsNetwork.add_edge(vectorNode, newNode, color = "b")
+                            infected = True
             
-            communalInfectionIndexes.append(communalInfectionIndex)
-            householdInfectionIndexes.append(householdInfectionIndex)
-            careInfectionIndexdexes.append(careInfectionIndex)
+            otherMembers = [x for x in person.house.occupants if x != person]
+            if len(otherMembers) > 0:
+                for member in otherMembers:
+                    if member.healthStatus == 'infectious':
+                        reductionFactor = 1.0
+                        if member.testPositive == True:
+                            reductionFactor = self.p['householdIsolationFactor']
+                        prob = self.p['betaHousehold']*member.contagiousnessIndex*reductionFactor
+                        if np.random.random() < prob:
+                            if infected == False:
+                                exposedAgents.append(person)
+                                newNode = Node(person.id, person.age, person.incomeQuintile)
+                                vectorNode = [x for x in self.infectionsNetwork.nodes() if x.agentID == member.id][0]
+                                self.infectionsNetwork.add_edge(vectorNode, newNode, color = "r")
+                                infected = True
+                
             
-            if person.age >=1 and person.age < 19:
-                num1to18 += 1
-                numberContacts1to18 += dailyContacts
-                averageContagiousness1to18 += averageContagiousness
-                careRiskFactor1to18 += person.careRiskFactor
-                homeRiskFactor1to18 += person.domesticRiskFactor
+            #############################     Beginning old exposure process    #######################################################
             
-            if person.age >= 65:
-                numOver65 += 1
-                numberContactsOver65 += dailyContacts
-                averageContagiousnessOver65 += averageContagiousness
-                careRiskFactorOver65 += person.careRiskFactor
-                homeRiskFactorOver65 += person.domesticRiskFactor
+#            dailyContacts = len(person.dailyContacts)
+#            averageContagiousness = 0
+#            if len(person.dailyContacts) > 0:
+#                averageContagiousness = np.mean([x.contagiousnessIndex for x in person.dailyContacts])
+#            person.communalRiskFactor = float(dailyContacts)*averageContagiousness
+#            
+#            # random risk factor
+##            randContacts = len(person.randomContacts)
+##            averageContagiousness = 0
+##            if len(person.randomContacts) > 0:
+##                averageContagiousness = np.mean([x.contagiousnessIndex for x in person.randomContacts])
+##            person.randomRiskFactor = float(randContacts)*averageContagiousness
+#            
+#            person.careRiskFactor = 0
+#            if len(person.nokCareContacts) > 0:
+#                for careContact in person.nokCareContacts:
+#                    reductionFactor = 1.0
+#                    if careContact.contact.testPositive == True:
+#                        reductionFactor = self.p['householdIsolationFactor']
+#                    durationFactor = math.pow(careContact.contactDuration*reductionFactor, self.p['contactDurationExp'])
+#                    person.careRiskFactor += careContact.contact.contagiousnessIndex*durationFactor
+#
+#            # Compute probability of infection
+#            socialBeta = self.p['betaCommunity']
+#            if person.age <= 30:
+#                socialBeta *= self.p['betaLessThan31']
+#            if person.age > 30 and person.age <=60:
+#                socialBeta *= self.p['beta30To60Increment']
+#            elif person.age >= 70 and person.age < 80: 
+#                socialBeta *= self.p['beta70To79Increment']
+#            elif person.age >= 80:
+#                socialBeta *= self.p['beta80PlusIncrement']
+#                
+#            communalInfectionIndex = self.p['betaCommunity']*person.communalRiskFactor
+#            # randomInfectionIndex = self.p['betaRandom']*person.randomRiskFactor
+#            householdInfectionIndex = self.p['betaHousehold']*person.domesticRiskFactor
+#            careInfectionIndex = self.p['betaCare']*person.careRiskFactor
+#            
+#            communalInfectionIndexes.append(communalInfectionIndex)
+#            householdInfectionIndexes.append(householdInfectionIndex)
+#            careInfectionIndexdexes.append(careInfectionIndex)
+#            
+#            if person.age >=1 and person.age < 19:
+#                num1to18 += 1
+#                numberContacts1to18 += dailyContacts
+#                averageContagiousness1to18 += averageContagiousness
+#                careRiskFactor1to18 += person.careRiskFactor
+#                homeRiskFactor1to18 += person.domesticRiskFactor
+#            
+#            if person.age >= 65:
+#                numOver65 += 1
+#                numberContactsOver65 += dailyContacts
+#                averageContagiousnessOver65 += averageContagiousness
+#                careRiskFactorOver65 += person.careRiskFactor
+#                homeRiskFactorOver65 += person.domesticRiskFactor
+#        
+#            
+#            infectionIndex = communalInfectionIndex+householdInfectionIndex+careInfectionIndex # +randomInfectionIndex
+#            probInfection = (math.exp(infectionIndex)-1.0)/math.exp(infectionIndex)
+#            
+#            if np.random.random() < probInfection:
+                
+        #####    End old exposure process   #########################################################################################
         
-            
-            infectionIndex = communalInfectionIndex+householdInfectionIndex+careInfectionIndex # +randomInfectionIndex
-            probInfection = (math.exp(infectionIndex)-1.0)/math.exp(infectionIndex)
-            if np.random.random() < probInfection:
-                exposedAgents.append(person)
+            if infected == True:
+                # exposedAgents.append(person)
+                
                 self.newExposed += 1
                 self.infectedByClass[person.incomeQuintile] += 1
                 self.infectedByAge[person.ageClass] += 1

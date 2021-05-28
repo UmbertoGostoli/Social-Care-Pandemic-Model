@@ -157,6 +157,15 @@ class Person:
         self.suppliers = []
         self.id = Person.counter
         Person.counter += 1
+        
+class Node:
+    counter = 1
+    def __init__ (self, agentID, age, quintile):
+        self.agentID = agentID
+        self.age = age
+        self.quintile = quintile
+        self.id = Node.counter
+        Node.counter += 1
 
 class ClassContact:
     def __init__ (self, age, quintile, num, totContacts, indContacts, empContacts, totAgeContacts):
