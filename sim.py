@@ -1968,8 +1968,9 @@ class Sim:
             infected = False
             for contact in person.dailyContacts:
                 if contact.healthStatus == 'infectious':
-                    prob = self.p['betaCommunity']*contact.contagiousnessIndex
-                    if np.random.random() < prob:
+                    infectionFactor = self.p['betaCommunity']*contact.contagiousnessIndex
+                    probInfection = (math.exp(infectionFactor)-1.0)/math.exp(infectionFactor)
+                    if np.random.random() < probInfection:
                         if infected == False:
                             exposedAgents.append(person)
                             newNode = Node(person.id, person.age, person.incomeQuintile)
@@ -1983,8 +1984,9 @@ class Sim:
                     if careContact.contact.testPositive == True:
                         reductionFactor = self.p['householdIsolationFactor']
                     durationFactor = math.pow(careContact.contactDuration*reductionFactor, self.p['contactDurationExp'])
-                    prob = self.p['betaCare']*careContact.contact.contagiousnessIndex*durationFactor
-                    if np.random.random() < prob:
+                    infectionFactor = self.p['betaCare']*careContact.contact.contagiousnessIndex*durationFactor
+                    probInfection = (math.exp(infectionFactor)-1.0)/math.exp(infectionFactor)
+                    if np.random.random() < probInfection:
                         if infected == False:
                             exposedAgents.append(person)
                             newNode = Node(person.id, person.age, person.incomeQuintile)
@@ -1999,8 +2001,9 @@ class Sim:
                         reductionFactor = 1.0
                         if member.testPositive == True:
                             reductionFactor = self.p['householdIsolationFactor']
-                        prob = self.p['betaHousehold']*member.contagiousnessIndex*reductionFactor
-                        if np.random.random() < prob:
+                        infectionFactor = self.p['betaHousehold']*member.contagiousnessIndex*reductionFactor
+                        probInfection = (math.exp(infectionFactor)-1.0)/math.exp(infectionFactor)
+                        if np.random.random() < probInfection:
                             if infected == False:
                                 exposedAgents.append(person)
                                 newNode = Node(person.id, person.age, person.incomeQuintile)
