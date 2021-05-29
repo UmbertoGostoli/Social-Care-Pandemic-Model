@@ -2271,18 +2271,18 @@ class Sim:
         
         
         
-        print 'Max Communal Infection Indexes: ' + str(max(communalInfectionIndexes))
-        print 'Mean Communal Infection Indexes: ' + str(np.mean(communalInfectionIndexes))
-        print 'Median Communal Infection Indexes: ' + str(np.median(communalInfectionIndexes))
-        print 'Min Communal Infection Indexes: ' + str(min(communalInfectionIndexes))
-        print 'Max Household Infection Indexes: ' + str(max(householdInfectionIndexes))
-        print 'Mean Household Infection Indexes: ' + str(np.mean(householdInfectionIndexes))
-        print 'Median Household Infection Indexes: ' + str(np.median(householdInfectionIndexes))
-        print 'Min Household Infection Indexes: ' + str(min(householdInfectionIndexes))
-        print 'Max Care Infection Indexes: ' + str(max(careInfectionIndexdexes))
-        print 'Mean Household Infection Indexes: ' + str(np.mean(careInfectionIndexdexes))
-        print 'Median Household Infection Indexes: ' + str(np.median(careInfectionIndexdexes))
-        print 'Min Care Infection Indexes: ' + str(min(careInfectionIndexdexes))
+#        print 'Max Communal Infection Indexes: ' + str(max(communalInfectionIndexes))
+#        print 'Mean Communal Infection Indexes: ' + str(np.mean(communalInfectionIndexes))
+#        print 'Median Communal Infection Indexes: ' + str(np.median(communalInfectionIndexes))
+#        print 'Min Communal Infection Indexes: ' + str(min(communalInfectionIndexes))
+#        print 'Max Household Infection Indexes: ' + str(max(householdInfectionIndexes))
+#        print 'Mean Household Infection Indexes: ' + str(np.mean(householdInfectionIndexes))
+#        print 'Median Household Infection Indexes: ' + str(np.median(householdInfectionIndexes))
+#        print 'Min Household Infection Indexes: ' + str(min(householdInfectionIndexes))
+#        print 'Max Care Infection Indexes: ' + str(max(careInfectionIndexdexes))
+#        print 'Mean Household Infection Indexes: ' + str(np.mean(careInfectionIndexdexes))
+#        print 'Median Household Infection Indexes: ' + str(np.median(careInfectionIndexdexes))
+#        print 'Min Care Infection Indexes: ' + str(min(careInfectionIndexdexes))
         
         newMild = [x for x in exposedAgents if x.symptomsLevel == 'mild']
         numMild = len(newMild)
