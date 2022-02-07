@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/298287083.svg)](https://zenodo.org/badge/latestdoi/298287083)
+
 # Social-Care-Pandemic-Model
 Model adding a pandemic model to the social care model to study the effect of Covid-19 on social care, whose results have been used for the Science Advances submission.
 
